@@ -1,19 +1,24 @@
 # Dusk for Plex
 
-A native Swift/SwiftUI Plex client for Apple platforms. Direct play only — no transcoding.
+A native Swift/SwiftUI Plex client for Apple platforms.
 
 ## Features
 
+- [x] Direct Play
 - [x] Plex authentication & server discovery
 - [x] Library browsing
 - [x] Search
-- [x] Continue watching
 - [x] Movie & TV show detail views
-- [x] Hybrid playback engine (AVPlayer + VLCKit)
 - [ ] Subtitle & audio track selection
-- [ ] tvOS support
-- [ ] macOS support (Catalyst)
-- [ ] Offline playback
+- [ ] Continuous Playback
+- [ ] App Store Release
+- [ ] tvOS App
+- [ ] Skip Intro & Credits
+- [ ] Passout Protection (Are you still watching?)
+- [ ] macOS App
+- [ ] Transcoding Support
+- [ ] Offline playback (Downloads)
+- [ ] Plex Home Integration
 
 ## Setup
 
