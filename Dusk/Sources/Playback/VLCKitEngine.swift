@@ -19,6 +19,7 @@ final class VLCKitEngine: NSObject, PlaybackEngine {
     private(set) var error: PlaybackError?
     private(set) var availableSubtitleTracks: [SubtitleTrack] = []
     private(set) var availableAudioTracks: [AudioTrack] = []
+    var onPlaybackEnded: (@MainActor () -> Void)?
 
     // MARK: - VLCKit Internals
 
@@ -30,6 +31,7 @@ final class VLCKitEngine: NSObject, PlaybackEngine {
 
     private var pendingStartPosition: TimeInterval?
     private var hasAppliedStartPosition = false
+    private var hasReportedPlaybackEnded = false
 
     // MARK: - Init
 
@@ -59,6 +61,7 @@ final class VLCKitEngine: NSObject, PlaybackEngine {
         currentTime = 0
         duration = 0
         hasAppliedStartPosition = false
+        hasReportedPlaybackEnded = false
         pendingStartPosition = startPosition
         availableSubtitleTracks = []
         availableAudioTracks = []
@@ -79,6 +82,7 @@ final class VLCKitEngine: NSObject, PlaybackEngine {
     func stop() {
         mediaPlayer.stop()
         state = .stopped
+        hasReportedPlaybackEnded = false
     }
 
     func seek(to position: TimeInterval) {
@@ -142,7 +146,12 @@ final class VLCKitEngine: NSObject, PlaybackEngine {
 
         case .ended:
             isBuffering = false
+            currentTime = max(currentTime, duration)
             state = .stopped
+            if !hasReportedPlaybackEnded {
+                hasReportedPlaybackEnded = true
+                onPlaybackEnded?()
+            }
 
         case .error:
             isBuffering = false

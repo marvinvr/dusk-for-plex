@@ -30,12 +30,18 @@ final class PlaybackCoordinator {
     /// The media source to load once the player view is attached.
     private(set) var playbackSource: PlaybackSource?
 
+    /// Changes whenever the active playback item changes so PlayerView rebuilds.
+    private(set) var playerPresentationID = UUID()
+
     // MARK: - Private
 
     private let plexService: PlexService
     private let preferences: UserPreferences
     private var ratingKey: String?
+    private var activeItemDetails: PlexMediaDetails?
     private var hasScrobbled = false
+    private var didFinalizeCurrentSession = false
+    private var isHandlingPlaybackEnded = false
 
     /// Most recent position captured by the timeline timer (ms).
     private var lastReportedTimeMs = 0
@@ -58,90 +64,17 @@ final class PlaybackCoordinator {
 
     /// Full "play an item" flow: fetch details → pick engine → build URL → present.
     func play(ratingKey: String) async {
-        self.ratingKey = ratingKey
         isLoading = true
-        loadError = nil
-        debugInfo = nil
-        playbackSource = nil
-        hasScrobbled = false
-        lastReportedTimeMs = 0
-        lastReportedDurationMs = 0
+        defer { isLoading = false }
 
-        do {
-            let details = try await plexService.getMediaDetails(ratingKey: ratingKey)
-
-            guard let media = details.media.first,
-                  let part = media.parts.first else {
-                loadError = "No playable media found."
-                isLoading = false
-                return
-            }
-
-            guard let url = plexService.directPlayURL(for: part) else {
-                loadError = "Could not construct playback URL."
-                isLoading = false
-                return
-            }
-
-            let engineType = StreamResolver.resolve(
-                media: media,
-                forceAVPlayer: preferences.forceAVPlayer,
-                forceVLCKit: preferences.forceVLCKit
-            )
-
-            // Create engine via StreamResolver + factory, respecting user preference
-            let newEngine = PlaybackEngineFactory.makeEngine(
-                for: media,
-                forceAVPlayer: preferences.forceAVPlayer,
-                forceVLCKit: preferences.forceVLCKit
-            )
-
-            engine = newEngine
-            playbackSource = PlaybackSource(
-                url: url,
-                startPosition: details.viewOffset.map { TimeInterval($0) / 1000.0 }
-            )
-            debugInfo = PlaybackDebugInfo(
-                title: details.title,
-                engine: engineType,
-                decision: .directPlay,
-                media: media,
-                part: part
-            )
-            isLoading = false
-            showPlayer = true
-
-            // Begin periodic progress reporting to Plex
-            startTimelineReporting()
-        } catch {
-            loadError = error.localizedDescription
-            isLoading = false
-        }
+        _ = await startPlaybackSession(ratingKey: ratingKey, presentPlayer: true)
     }
 
     /// Called when the full-screen player cover is dismissed.
     /// Sends a final "stopped" timeline, scrobbles if needed, and tears down.
     func onPlayerDismissed() {
-        // Report final "stopped" state using last captured position
-        if let ratingKey {
-            let timeMs = lastReportedTimeMs
-            let durationMs = lastReportedDurationMs
-            Task {
-                await plexService.reportTimeline(
-                    ratingKey: ratingKey,
-                    state: .stopped,
-                    timeMs: timeMs,
-                    durationMs: durationMs
-                )
-            }
-        }
-
-        timelineTimer?.invalidate()
-        timelineTimer = nil
-        engine = nil
-        debugInfo = nil
-        playbackSource = nil
-        ratingKey = nil
+        finalizeCurrentPlaybackSession(markCompleted: false)
+        clearPlayerState()
         showPlayer = false
     }
 
@@ -194,6 +127,164 @@ final class PlaybackCoordinator {
                 try? await plexService.scrobble(ratingKey: ratingKey)
             }
         }
+    }
+
+    @discardableResult
+    private func startPlaybackSession(ratingKey: String, presentPlayer: Bool) async -> Bool {
+        loadError = nil
+
+        do {
+            let details = try await plexService.getMediaDetails(ratingKey: ratingKey)
+
+            guard let media = details.media.first,
+                  let part = media.parts.first else {
+                loadError = "No playable media found."
+                return false
+            }
+
+            guard let url = plexService.directPlayURL(for: part) else {
+                loadError = "Could not construct playback URL."
+                return false
+            }
+
+            let engineType = StreamResolver.resolve(
+                media: media,
+                forceAVPlayer: preferences.forceAVPlayer,
+                forceVLCKit: preferences.forceVLCKit
+            )
+
+            let newEngine = PlaybackEngineFactory.makeEngine(
+                for: media,
+                forceAVPlayer: preferences.forceAVPlayer,
+                forceVLCKit: preferences.forceVLCKit
+            )
+            newEngine.onPlaybackEnded = { [weak self] in
+                Task { @MainActor [weak self] in
+                    await self?.handlePlaybackEnded()
+                }
+            }
+
+            hasScrobbled = false
+            didFinalizeCurrentSession = false
+            lastReportedTimeMs = 0
+            lastReportedDurationMs = 0
+            self.ratingKey = ratingKey
+            activeItemDetails = details
+            engine = newEngine
+            playbackSource = PlaybackSource(
+                url: url,
+                startPosition: details.viewOffset.map { TimeInterval($0) / 1000.0 }
+            )
+            debugInfo = PlaybackDebugInfo(
+                title: details.title,
+                engine: engineType,
+                decision: .directPlay,
+                media: media,
+                part: part
+            )
+            playerPresentationID = UUID()
+            startTimelineReporting()
+
+            if presentPlayer {
+                showPlayer = true
+            }
+
+            return true
+        } catch {
+            loadError = error.localizedDescription
+            return false
+        }
+    }
+
+    private func handlePlaybackEnded() async {
+        guard !isHandlingPlaybackEnded else { return }
+        isHandlingPlaybackEnded = true
+        defer { isHandlingPlaybackEnded = false }
+
+        if preferences.continuousPlayEnabled,
+           let activeItemDetails,
+           let nextEpisode = try? await plexService.getNextEpisode(after: activeItemDetails) {
+            finalizeCurrentPlaybackSession(markCompleted: true)
+
+            let didStartNextEpisode = await startPlaybackSession(
+                ratingKey: nextEpisode.ratingKey,
+                presentPlayer: false
+            )
+
+            if didStartNextEpisode {
+                return
+            }
+        }
+
+        finalizeCurrentPlaybackSession(markCompleted: true)
+        showPlayer = false
+    }
+
+    private func finalizeCurrentPlaybackSession(markCompleted: Bool) {
+        guard !didFinalizeCurrentSession else { return }
+        didFinalizeCurrentSession = true
+
+        timelineTimer?.invalidate()
+        timelineTimer = nil
+
+        let snapshot = timelineSnapshot(markCompleted: markCompleted)
+        lastReportedTimeMs = snapshot.timeMs
+        lastReportedDurationMs = snapshot.durationMs
+
+        if let ratingKey {
+            Task {
+                await plexService.reportTimeline(
+                    ratingKey: ratingKey,
+                    state: .stopped,
+                    timeMs: snapshot.timeMs,
+                    durationMs: snapshot.durationMs
+                )
+            }
+
+            if !hasScrobbled,
+               snapshot.durationMs > 0,
+               snapshot.timeMs > Int(Double(snapshot.durationMs) * 0.9) {
+                hasScrobbled = true
+                Task {
+                    try? await plexService.scrobble(ratingKey: ratingKey)
+                }
+            }
+        }
+
+        engine?.onPlaybackEnded = nil
+        engine?.stop()
+    }
+
+    private func timelineSnapshot(markCompleted: Bool) -> (timeMs: Int, durationMs: Int) {
+        let engineTimeMs = engine.map { Int($0.currentTime * 1000) } ?? 0
+        let engineDurationMs = engine.map { Int($0.duration * 1000) } ?? 0
+
+        let durationMs = max(lastReportedDurationMs, engineDurationMs)
+        var timeMs = max(lastReportedTimeMs, engineTimeMs)
+
+        if markCompleted, durationMs > 0 {
+            timeMs = durationMs
+        } else if durationMs > 0 {
+            timeMs = min(timeMs, durationMs)
+        }
+
+        return (timeMs, durationMs)
+    }
+
+    private func clearPlayerState() {
+        timelineTimer?.invalidate()
+        timelineTimer = nil
+        engine?.onPlaybackEnded = nil
+        engine = nil
+        activeItemDetails = nil
+        debugInfo = nil
+        playbackSource = nil
+        ratingKey = nil
+        hasScrobbled = false
+        didFinalizeCurrentSession = false
+        isHandlingPlaybackEnded = false
+        lastReportedTimeMs = 0
+        lastReportedDurationMs = 0
     }
 }
 

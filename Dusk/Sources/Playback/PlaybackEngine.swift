@@ -30,6 +30,7 @@ protocol PlaybackEngine: AnyObject {
     var duration: TimeInterval { get }
     var isBuffering: Bool { get }
     var error: PlaybackError? { get }
+    var onPlaybackEnded: (@MainActor () -> Void)? { get set }
 
     // MARK: - Track Selection
 

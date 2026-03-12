@@ -102,6 +102,7 @@ struct MainTabView: View {
                     playbackSource: playbackSource,
                     debugInfo: playback.debugInfo
                 )
+                .id(playback.playerPresentationID)
             }
         }
     }

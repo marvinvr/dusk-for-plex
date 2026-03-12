@@ -224,6 +224,46 @@ final class PlexService {
         try await fetchMetadata(path: "/library/metadata/\(seasonKey)/children")
     }
 
+    func getNextEpisode(after episode: PlexMediaDetails) async throws -> PlexEpisode? {
+        guard episode.type == .episode,
+              let seasonKey = episode.parentRatingKey,
+              let showKey = episode.grandparentRatingKey else {
+            return nil
+        }
+
+        let currentSeasonEpisodes = try await getEpisodes(seasonKey: seasonKey)
+            .sorted { ($0.index ?? 0) < ($1.index ?? 0) }
+
+        if let currentEpisodeIndex = currentSeasonEpisodes.firstIndex(where: { $0.ratingKey == episode.ratingKey }),
+           currentEpisodeIndex < currentSeasonEpisodes.index(before: currentSeasonEpisodes.endIndex) {
+            return currentSeasonEpisodes[currentSeasonEpisodes.index(after: currentEpisodeIndex)]
+        }
+
+        if let currentEpisodeNumber = episode.index,
+           let nextEpisodeInSeason = currentSeasonEpisodes.first(where: { ($0.index ?? 0) > currentEpisodeNumber }) {
+            return nextEpisodeInSeason
+        }
+
+        let seasons = try await getSeasons(showKey: showKey)
+            .sorted { $0.index < $1.index }
+
+        let currentSeasonIndex = episode.parentIndex
+            ?? seasons.first(where: { $0.ratingKey == seasonKey })?.index
+
+        guard let currentSeasonIndex else { return nil }
+
+        for season in seasons where season.index > currentSeasonIndex {
+            let episodes = try await getEpisodes(seasonKey: season.ratingKey)
+                .sorted { ($0.index ?? 0) < ($1.index ?? 0) }
+
+            if let firstEpisode = episodes.first {
+                return firstEpisode
+            }
+        }
+
+        return nil
+    }
+
     // MARK: - Home
 
     func getHubs() async throws -> [PlexHub] {

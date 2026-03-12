@@ -15,6 +15,7 @@ final class UserPreferences {
         static let maxResolution = "maxResolution"
         static let defaultSubtitleLanguage = "defaultSubtitleLanguage"
         static let defaultAudioLanguage = "defaultAudioLanguage"
+        static let continuousPlayEnabled = "continuousPlayEnabled"
         static let forceAVPlayer = "forceAVPlayer"
         static let forceVLCKit = "forceVLCKit"
         static let appearanceMode = "appearanceMode"
@@ -35,6 +36,11 @@ final class UserPreferences {
     /// ISO 639-1 language code for preferred audio track.
     var defaultAudioLanguage: String {
         didSet { UserDefaults.standard.set(defaultAudioLanguage, forKey: Keys.defaultAudioLanguage) }
+    }
+
+    /// Automatically continue to the next episode when TV playback finishes.
+    var continuousPlayEnabled: Bool {
+        didSet { UserDefaults.standard.set(continuousPlayEnabled, forKey: Keys.continuousPlayEnabled) }
     }
 
     /// Bypass StreamResolver and always use AVPlayer.
@@ -82,6 +88,7 @@ final class UserPreferences {
 
         let defaultSubtitleLanguage = defaults.string(forKey: Keys.defaultSubtitleLanguage)
         let defaultAudioLanguage = defaults.string(forKey: Keys.defaultAudioLanguage) ?? "en"
+        let continuousPlayEnabled = defaults.object(forKey: Keys.continuousPlayEnabled) as? Bool ?? true
         let storedForceAVPlayer = defaults.bool(forKey: Keys.forceAVPlayer)
         let storedForceVLCKit = defaults.bool(forKey: Keys.forceVLCKit)
         let forceAVPlayer = storedForceAVPlayer
@@ -99,6 +106,7 @@ final class UserPreferences {
         self.maxResolution = maxResolution
         self.defaultSubtitleLanguage = defaultSubtitleLanguage
         self.defaultAudioLanguage = defaultAudioLanguage
+        self.continuousPlayEnabled = continuousPlayEnabled
         self.forceAVPlayer = forceAVPlayer
         self.forceVLCKit = forceVLCKit
         self.appearanceMode = appearanceMode

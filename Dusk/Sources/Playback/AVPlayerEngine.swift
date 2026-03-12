@@ -14,6 +14,7 @@ final class AVPlayerEngine: PlaybackEngine {
     private(set) var error: PlaybackError?
     private(set) var availableSubtitleTracks: [SubtitleTrack] = []
     private(set) var availableAudioTracks: [AudioTrack] = []
+    var onPlaybackEnded: (@MainActor () -> Void)?
 
     // MARK: - AVPlayer
 
@@ -25,6 +26,7 @@ final class AVPlayerEngine: PlaybackEngine {
     private var timeObserver: Any?
     private var statusObserver: NSKeyValueObservation?
     private var timeControlStatusObserver: NSKeyValueObservation?
+    private var playbackEndedObserver: NSObjectProtocol?
 
     // MARK: - Track Mapping
 
@@ -35,6 +37,7 @@ final class AVPlayerEngine: PlaybackEngine {
     private var subtitleOptionsByID: [Int: AVMediaSelectionOption] = [:]
 
     private var pendingStartPosition: TimeInterval?
+    private var hasReportedPlaybackEnded = false
 
     // MARK: - Init
 
@@ -45,10 +48,16 @@ final class AVPlayerEngine: PlaybackEngine {
         setupKVOObservers()
     }
 
+    deinit {
+        removeTimeObserver()
+        removePlaybackEndedObserver()
+    }
+
     // MARK: - Lifecycle
 
     func load(url: URL, startPosition: TimeInterval?) {
         removeTimeObserver()
+        removePlaybackEndedObserver()
 
         state = .loading
         error = nil
@@ -62,9 +71,11 @@ final class AVPlayerEngine: PlaybackEngine {
         audioGroup = nil
         subtitleGroup = nil
         pendingStartPosition = startPosition
+        hasReportedPlaybackEnded = false
 
         let item = AVPlayerItem(url: url)
         player.replaceCurrentItem(with: item)
+        observePlaybackEnd(for: item)
         addTimeObserver()
     }
 
@@ -79,6 +90,7 @@ final class AVPlayerEngine: PlaybackEngine {
     func stop() {
         player.pause()
         removeTimeObserver()
+        removePlaybackEndedObserver()
         player.replaceCurrentItem(with: nil)
 
         state = .stopped
@@ -91,6 +103,7 @@ final class AVPlayerEngine: PlaybackEngine {
         subtitleOptionsByID = [:]
         audioGroup = nil
         subtitleGroup = nil
+        hasReportedPlaybackEnded = false
     }
 
     func seek(to position: TimeInterval) {
@@ -204,6 +217,34 @@ final class AVPlayerEngine: PlaybackEngine {
             player.removeTimeObserver(observer)
             timeObserver = nil
         }
+    }
+
+    private func observePlaybackEnd(for item: AVPlayerItem) {
+        playbackEndedObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: item,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.handlePlaybackEnded()
+            }
+        }
+    }
+
+    private func removePlaybackEndedObserver() {
+        if let playbackEndedObserver {
+            NotificationCenter.default.removeObserver(playbackEndedObserver)
+            self.playbackEndedObserver = nil
+        }
+    }
+
+    private func handlePlaybackEnded() {
+        guard !hasReportedPlaybackEnded else { return }
+        hasReportedPlaybackEnded = true
+        currentTime = duration
+        state = .stopped
+        isBuffering = false
+        onPlaybackEnded?()
     }
 
     // MARK: - Private: Duration & Tracks

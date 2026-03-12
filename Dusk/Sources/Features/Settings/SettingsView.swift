@@ -93,6 +93,10 @@ struct SettingsView: View {
             }
             .foregroundStyle(Color.duskTextPrimary)
 
+            Toggle("Continuous Play", isOn: $preferences.continuousPlayEnabled)
+                .foregroundStyle(Color.duskTextPrimary)
+                .tint(Color.duskAccent)
+
             Toggle("Force AVPlayer", isOn: $preferences.forceAVPlayer)
                 .foregroundStyle(Color.duskTextPrimary)
                 .tint(Color.duskAccent)
@@ -109,7 +113,7 @@ struct SettingsView: View {
             Text("Playback")
                 .foregroundStyle(Color.duskTextSecondary)
         } footer: {
-            Text("Force AVPlayer and Force VLCKit bypass automatic engine selection. Enabling one disables the other. Force AVPlayer may fail on formats AVPlayer cannot handle. Player Debug Overlay shows stream stats in the top-right corner during playback.")
+            Text(playbackFooterText)
                 .foregroundStyle(Color.duskTextSecondary)
         }
         .listRowBackground(Color.duskSurface)
@@ -292,7 +296,7 @@ struct SettingsView: View {
     }
 
     private var playbackFooterText: String {
-        "Force AVPlayer and Force VLCKit bypass automatic engine selection. Enabling one disables the other. Force AVPlayer may fail on formats AVPlayer cannot handle. Player Debug Overlay shows stream stats in the top-right corner during playback."
+        "Continuous Play automatically advances TV episodes and is enabled by default. Force AVPlayer and Force VLCKit bypass automatic engine selection. Enabling one disables the other. Force AVPlayer may fail on formats AVPlayer cannot handle. Player Debug Overlay shows stream stats in the top-right corner during playback."
     }
 
     private var formattedCacheSize: String {
@@ -359,6 +363,10 @@ struct SettingsView: View {
                 selection: $preferences.defaultAudioLanguage,
                 selectedTitle: languageDisplayName(for: preferences.defaultAudioLanguage)
             ) { languageDisplayName(for: $0) }
+
+            tvRowDivider
+
+            TVSettingsToggleRow(title: "Continuous Play", isOn: $preferences.continuousPlayEnabled)
 
             tvRowDivider
 
