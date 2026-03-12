@@ -21,11 +21,9 @@ struct ServerPickerView: View {
                                     .font(.headline)
                                     .foregroundStyle(Color.duskTextPrimary)
 
-                                if let platform = server.platform {
-                                    Text(platform)
-                                        .font(.caption)
-                                        .foregroundStyle(Color.duskTextSecondary)
-                                }
+                                Text(server.owned ? "Your server" : "Shared by \(server.sourceTitle ?? "Unknown")")
+                                    .font(.caption)
+                                    .foregroundStyle(Color.duskTextSecondary)
                             }
 
                             Spacer()
