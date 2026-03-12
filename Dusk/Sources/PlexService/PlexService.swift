@@ -36,6 +36,9 @@ final class PlexService {
     init() {
         let config = URLSessionConfiguration.default
         config.urlCache = AppImageCache.shared
+        config.waitsForConnectivity = true
+        config.timeoutIntervalForRequest = 15
+        config.timeoutIntervalForResource = 30
         self.session = URLSession(configuration: config)
         self.decoder = JSONDecoder()
         self.encoder = JSONEncoder()
@@ -158,32 +161,41 @@ final class PlexService {
     }
 
     func connect(to server: PlexServer) async throws {
-        // Try connections in priority order: local → remote → relay.
-        for connection in server.sortedConnections {
-            guard let url = URL(string: connection.uri) else { continue }
+        let candidates = connectionCandidates(for: server)
+        var lastFailure = "Could not connect to \(server.name)"
 
-            var request = URLRequest(url: url)
-            request.httpMethod = "GET"
-            request.timeoutInterval = 5
-            applyHeaders(to: &request)
+        for candidate in candidates {
+            for token in connectionProbeTokens(for: server) {
+                var request = URLRequest(url: candidate.probeURL)
+                request.httpMethod = "GET"
+                request.timeoutInterval = candidate.connection.local ? 20 : 8
+                applyHeaders(to: &request)
 
-            // Use the server-specific access token if available.
-            if let serverToken = server.accessToken {
-                request.setValue(serverToken, forHTTPHeaderField: "X-Plex-Token")
-            }
-
-            do {
-                let (_, response) = try await session.data(for: request)
-                if let http = response as? HTTPURLResponse, http.statusCode == 200 {
-                    setServer(server, baseURL: url)
-                    return
+                if let token {
+                    request.setValue(token, forHTTPHeaderField: "X-Plex-Token")
                 }
-            } catch {
-                continue
+
+                do {
+                    let (_, response) = try await session.data(for: request)
+                    guard let http = response as? HTTPURLResponse else {
+                        lastFailure = "Invalid response from \(server.name)"
+                        continue
+                    }
+
+                    guard (200...299).contains(http.statusCode) else {
+                        lastFailure = "HTTP \(http.statusCode) from \(server.name)"
+                        continue
+                    }
+
+                    setServer(server, baseURL: candidate.baseURL)
+                    return
+                } catch {
+                    lastFailure = error.localizedDescription
+                }
             }
         }
 
-        throw PlexServiceError.networkError("Could not connect to \(server.name)")
+        throw PlexServiceError.networkError(lastFailure)
     }
 
     // MARK: - Libraries
@@ -560,9 +572,84 @@ extension PlexService {
         }
         return components.url
     }
+
+    private func connectionCandidates(for server: PlexServer) -> [ConnectionCandidate] {
+        var candidates: [ConnectionCandidate] = []
+        var seen = Set<String>()
+
+        for connection in server.sortedConnections where !connection.isKnownUnreachableAddress {
+            if connection.local, let httpFallbackURI = connection.httpFallbackURI {
+                appendConnectionCandidate(
+                    uri: httpFallbackURI,
+                    connection: connection,
+                    seen: &seen,
+                    into: &candidates
+                )
+            }
+
+            appendConnectionCandidate(
+                uri: connection.uri,
+                connection: connection,
+                seen: &seen,
+                into: &candidates
+            )
+
+            if !connection.local, let httpFallbackURI = connection.httpFallbackURI {
+                appendConnectionCandidate(
+                    uri: httpFallbackURI,
+                    connection: connection,
+                    seen: &seen,
+                    into: &candidates
+                )
+            }
+        }
+
+        return candidates
+    }
+
+    private func appendConnectionCandidate(
+        uri: String,
+        connection: PlexConnection,
+        seen: inout Set<String>,
+        into candidates: inout [ConnectionCandidate]
+    ) {
+        guard let baseURL = URL(string: uri),
+              seen.insert(baseURL.absoluteString).inserted,
+              let probeURL = buildURL(base: baseURL.absoluteString, path: "/identity") else {
+            return
+        }
+
+        candidates.append(
+            ConnectionCandidate(
+                baseURL: baseURL,
+                probeURL: probeURL,
+                connection: connection
+            )
+        )
+    }
+
+    private func connectionProbeTokens(for server: PlexServer) -> [String?] {
+        var tokens: [String?] = []
+
+        if let serverToken = server.accessToken {
+            tokens.append(serverToken)
+        }
+
+        if let authToken, tokens.contains(authToken) == false {
+            tokens.append(authToken)
+        }
+
+        return tokens.isEmpty ? [nil] : tokens
+    }
 }
 
 // MARK: - MediaContainer Response Types
+
+private struct ConnectionCandidate {
+    let baseURL: URL
+    let probeURL: URL
+    let connection: PlexConnection
+}
 
 /// Server response with items in a `Metadata` array.
 private struct MetadataResponse<T: Decodable>: Decodable {

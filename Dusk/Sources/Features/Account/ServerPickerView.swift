@@ -3,6 +3,7 @@ import SwiftUI
 struct ServerPickerView: View {
     let servers: [PlexServer]
     let onSelect: (PlexServer) async throws -> Void
+    var onSignOut: (() -> Void)? = nil
     @State private var connectingTo: String?
     @State private var connectionError: String?
 
@@ -11,7 +12,7 @@ struct ServerPickerView: View {
             ZStack {
                 Color.duskBackground.ignoresSafeArea()
 
-                VStack(spacing: 12) {
+                List {
                     if let connectionError {
                         HStack(alignment: .top, spacing: 12) {
                             Image(systemName: "exclamationmark.triangle")
@@ -24,11 +25,11 @@ struct ServerPickerView: View {
 
                             Spacer(minLength: 0)
                         }
-                        .padding(.horizontal, 16)
-                        .padding(.top, 12)
+                        .padding(.vertical, 4)
+                        .listRowBackground(Color.duskSurface)
                     }
 
-                    List(servers) { server in
+                    ForEach(servers) { server in
                         Button {
                             connectionError = nil
                             connectingTo = server.clientIdentifier
@@ -70,9 +71,15 @@ struct ServerPickerView: View {
                         .duskSuppressTVOSButtonChrome()
                         .listRowBackground(Color.duskSurface)
                     }
-                    .duskScrollContentBackgroundHidden()
-                    .duskNavigationTitle("Choose Server")
+
+                    if let onSignOut {
+                        Button("Sign Out", role: .destructive, action: onSignOut)
+                            .duskSuppressTVOSButtonChrome()
+                            .listRowBackground(Color.duskSurface)
+                    }
                 }
+                .duskScrollContentBackgroundHidden()
+                .duskNavigationTitle("Choose Server")
             }
         }
     }

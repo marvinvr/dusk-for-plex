@@ -16,6 +16,8 @@ struct ContentView: View {
             } else if let servers = discoveredServers, servers.count > 1 {
                 ServerPickerView(servers: servers) { server in
                     try await plexService.connect(to: server)
+                } onSignOut: {
+                    plexService.signOut()
                 }
             } else {
                 serverDiscoveryView

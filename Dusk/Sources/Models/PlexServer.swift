@@ -36,8 +36,14 @@ struct PlexServer: Codable, Sendable, Identifiable {
     /// Returns connections sorted by preference: local first, then remote, then relay.
     var sortedConnections: [PlexConnection] {
         connections.sorted { lhs, rhs in
-            if lhs.local != rhs.local { return lhs.local }
-            if lhs.relay != rhs.relay { return !lhs.relay }
+            if lhs.sortPriority != rhs.sortPriority {
+                return lhs.sortPriority < rhs.sortPriority
+            }
+
+            if lhs.isHTTPS != rhs.isHTTPS {
+                return lhs.isHTTPS
+            }
+
             return false
         }
     }
@@ -61,5 +67,52 @@ struct PlexConnection: Codable, Sendable, Hashable {
         case local
         case relay
         case iPv6 = "IPv6"
+    }
+
+    var sortPriority: Int {
+        if local && !relay { return 0 }
+        if !local && !relay { return 1 }
+        return 2
+    }
+
+    var isHTTPS: Bool {
+        `protocol`.caseInsensitiveCompare("https") == .orderedSame
+    }
+
+    var isKnownUnreachableAddress: Bool {
+        let normalized = address
+            .trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
+            .replacingOccurrences(of: "-", with: ":")
+            .lowercased()
+
+        if normalized.hasPrefix("172.") {
+            let octets = normalized.split(separator: ".")
+            if octets.count > 1, let secondOctet = Int(octets[1]), (17...31).contains(secondOctet) {
+                return true
+            }
+        }
+
+        if normalized == "::" || normalized == "0000:0000:0000:0000:0000:0000:0000:0000" {
+            return true
+        }
+
+        if normalized.hasPrefix("fe80:") || normalized.hasPrefix("fe80::") {
+            return true
+        }
+
+        return false
+    }
+
+    var httpFallbackURI: String? {
+        guard isHTTPS else { return nil }
+
+        let host: String
+        if address.contains(":") && !address.hasPrefix("[") && !address.hasSuffix("]") {
+            host = "[\(address)]"
+        } else {
+            host = address
+        }
+
+        return "http://\(host):\(port)"
     }
 }
