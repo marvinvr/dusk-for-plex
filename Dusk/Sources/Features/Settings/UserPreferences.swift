@@ -17,6 +17,9 @@ final class UserPreferences {
         static let subtitleForcedOnly = "subtitleForcedOnly"
         static let defaultAudioLanguage = "defaultAudioLanguage"
         static let continuousPlayEnabled = "continuousPlayEnabled"
+        static let playerDoubleTapSeekEnabled = "playerDoubleTapSeekEnabled"
+        static let playerDoubleTapForwardInterval = "playerDoubleTapForwardInterval"
+        static let playerDoubleTapBackwardInterval = "playerDoubleTapBackwardInterval"
         static let forceAVPlayer = "forceAVPlayer"
         static let forceVLCKit = "forceVLCKit"
         static let appearanceMode = "appearanceMode"
@@ -47,6 +50,21 @@ final class UserPreferences {
     /// Automatically continue to the next episode when TV playback finishes.
     var continuousPlayEnabled: Bool {
         didSet { UserDefaults.standard.set(continuousPlayEnabled, forKey: Keys.continuousPlayEnabled) }
+    }
+
+    /// Enable left/right double-tap seeking on touch-based platforms.
+    var playerDoubleTapSeekEnabled: Bool {
+        didSet { UserDefaults.standard.set(playerDoubleTapSeekEnabled, forKey: Keys.playerDoubleTapSeekEnabled) }
+    }
+
+    /// Jump interval for double-tapping the right side of the player.
+    var playerDoubleTapForwardInterval: PlayerSeekInterval {
+        didSet { UserDefaults.standard.set(playerDoubleTapForwardInterval.rawValue, forKey: Keys.playerDoubleTapForwardInterval) }
+    }
+
+    /// Jump interval for double-tapping the left side of the player.
+    var playerDoubleTapBackwardInterval: PlayerSeekInterval {
+        didSet { UserDefaults.standard.set(playerDoubleTapBackwardInterval.rawValue, forKey: Keys.playerDoubleTapBackwardInterval) }
     }
 
     /// Bypass StreamResolver and always use AVPlayer.
@@ -96,6 +114,17 @@ final class UserPreferences {
         let subtitleForcedOnly = defaults.bool(forKey: Keys.subtitleForcedOnly)
         let defaultAudioLanguage = defaults.string(forKey: Keys.defaultAudioLanguage) ?? "en"
         let continuousPlayEnabled = defaults.object(forKey: Keys.continuousPlayEnabled) as? Bool ?? true
+        let playerDoubleTapSeekEnabled = defaults.object(forKey: Keys.playerDoubleTapSeekEnabled) as? Bool ?? true
+        let playerDoubleTapForwardInterval = Self.storedSeekInterval(
+            forKey: Keys.playerDoubleTapForwardInterval,
+            defaults: defaults,
+            fallback: .fifteenSeconds
+        )
+        let playerDoubleTapBackwardInterval = Self.storedSeekInterval(
+            forKey: Keys.playerDoubleTapBackwardInterval,
+            defaults: defaults,
+            fallback: .fiveSeconds
+        )
         let storedForceAVPlayer = defaults.bool(forKey: Keys.forceAVPlayer)
         let storedForceVLCKit = defaults.bool(forKey: Keys.forceVLCKit)
         let forceAVPlayer = storedForceAVPlayer
@@ -115,10 +144,22 @@ final class UserPreferences {
         self.subtitleForcedOnly = subtitleForcedOnly
         self.defaultAudioLanguage = defaultAudioLanguage
         self.continuousPlayEnabled = continuousPlayEnabled
+        self.playerDoubleTapSeekEnabled = playerDoubleTapSeekEnabled
+        self.playerDoubleTapForwardInterval = playerDoubleTapForwardInterval
+        self.playerDoubleTapBackwardInterval = playerDoubleTapBackwardInterval
         self.forceAVPlayer = forceAVPlayer
         self.forceVLCKit = forceVLCKit
         self.appearanceMode = appearanceMode
         self.playerDebugOverlayEnabled = playerDebugOverlayEnabled
+    }
+
+    private static func storedSeekInterval(
+        forKey key: String,
+        defaults: UserDefaults,
+        fallback: PlayerSeekInterval
+    ) -> PlayerSeekInterval {
+        guard defaults.object(forKey: key) != nil else { return fallback }
+        return PlayerSeekInterval(rawValue: defaults.integer(forKey: key)) ?? fallback
     }
 }
 
@@ -143,6 +184,25 @@ enum AppearanceMode: String, CaseIterable, Identifiable {
         case .light: .light
         case .dark: .dark
         }
+    }
+}
+
+enum PlayerSeekInterval: Int, CaseIterable, Identifiable {
+    case fiveSeconds = 5
+    case tenSeconds = 10
+    case fifteenSeconds = 15
+    case thirtySeconds = 30
+    case fortyFiveSeconds = 45
+    case sixtySeconds = 60
+
+    var id: Int { rawValue }
+
+    var displayName: String {
+        "\(rawValue)s"
+    }
+
+    var timeInterval: TimeInterval {
+        TimeInterval(rawValue)
     }
 }
 

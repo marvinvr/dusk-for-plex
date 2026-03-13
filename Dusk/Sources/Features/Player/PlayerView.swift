@@ -40,11 +40,7 @@ struct PlayerView: View {
             viewModel.engineView
                 .ignoresSafeArea()
 
-            // Invisible tap target to toggle controls
-            Color.clear
-                .contentShape(Rectangle())
-                .ignoresSafeArea()
-                .onTapGesture { viewModel.toggleControls() }
+            interactionOverlay
 
             // Buffering spinner
             if viewModel.shouldShowBufferingIndicator {
@@ -91,6 +87,49 @@ struct PlayerView: View {
         .onDisappear { viewModel.cleanup() }
         .sheet(isPresented: $vm.showSubtitlePicker) { subtitlePicker }
         .sheet(isPresented: $vm.showAudioPicker) { audioPicker }
+    }
+
+    private var interactionOverlay: some View {
+        GeometryReader { _ in
+            HStack(spacing: 0) {
+                interactionZone(
+                    seekOffset: -preferences.playerDoubleTapBackwardInterval.timeInterval
+                )
+                interactionZone(
+                    seekOffset: preferences.playerDoubleTapForwardInterval.timeInterval
+                )
+            }
+        }
+        .ignoresSafeArea()
+    }
+
+    @ViewBuilder
+    private func interactionZone(seekOffset: TimeInterval) -> some View {
+        #if os(tvOS)
+        Color.clear
+            .contentShape(Rectangle())
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .onTapGesture { viewModel.toggleControls() }
+        #else
+        if preferences.playerDoubleTapSeekEnabled {
+            Color.clear
+                .contentShape(Rectangle())
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .gesture(
+                    TapGesture(count: 2)
+                        .onEnded { viewModel.seek(by: seekOffset) }
+                        .exclusively(
+                            before: TapGesture()
+                                .onEnded { viewModel.toggleControls() }
+                        )
+                )
+        } else {
+            Color.clear
+                .contentShape(Rectangle())
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .onTapGesture { viewModel.toggleControls() }
+        }
+        #endif
     }
 
     // MARK: - Controls Overlay
@@ -354,14 +393,8 @@ struct PlayerView: View {
     // MARK: - Center Controls
 
     private var centerControls: some View {
-        HStack(spacing: 48) {
-            Button { viewModel.skipBackward() } label: {
-                Image(systemName: "gobackward.15")
-                    .font(.title)
-                    .foregroundStyle(.white)
-                    .frame(width: 60, height: 60)
-            }
-
+        HStack {
+            Spacer()
             Button { viewModel.togglePlayPause() } label: {
                 Image(systemName: viewModel.state == .playing ? "pause.fill" : "play.fill")
                     .font(.system(size: 44))
@@ -369,13 +402,7 @@ struct PlayerView: View {
                     .frame(width: 72, height: 72)
                     .background(.ultraThinMaterial, in: Circle())
             }
-
-            Button { viewModel.skipForward() } label: {
-                Image(systemName: "goforward.15")
-                    .font(.title)
-                    .foregroundStyle(.white)
-                    .frame(width: 60, height: 60)
-            }
+            Spacer()
         }
     }
 

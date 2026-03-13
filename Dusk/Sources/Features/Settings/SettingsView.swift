@@ -101,6 +101,28 @@ struct SettingsView: View {
                 .foregroundStyle(Color.duskTextPrimary)
                 .tint(Color.duskAccent)
 
+            #if !os(tvOS)
+            Toggle("Double-Tap to Seek", isOn: $preferences.playerDoubleTapSeekEnabled)
+                .foregroundStyle(Color.duskTextPrimary)
+                .tint(Color.duskAccent)
+
+            if preferences.playerDoubleTapSeekEnabled {
+                Picker("Back Jump", selection: $preferences.playerDoubleTapBackwardInterval) {
+                    ForEach(PlayerSeekInterval.allCases) { interval in
+                        Text(interval.displayName).tag(interval)
+                    }
+                }
+                .foregroundStyle(Color.duskTextPrimary)
+
+                Picker("Forward Jump", selection: $preferences.playerDoubleTapForwardInterval) {
+                    ForEach(PlayerSeekInterval.allCases) { interval in
+                        Text(interval.displayName).tag(interval)
+                    }
+                }
+                .foregroundStyle(Color.duskTextPrimary)
+            }
+            #endif
+
             Toggle("Force AVPlayer", isOn: $preferences.forceAVPlayer)
                 .foregroundStyle(Color.duskTextPrimary)
                 .tint(Color.duskAccent)
@@ -300,7 +322,11 @@ struct SettingsView: View {
     }
 
     private var playbackFooterText: String {
+        #if os(tvOS)
         "Continuous Play automatically advances TV episodes and is enabled by default. Forced Only limits automatic subtitle selection to forced tracks. Force AVPlayer and Force VLCKit bypass automatic engine selection. Enabling one disables the other. Force AVPlayer may fail on formats AVPlayer cannot handle. Player Debug Overlay shows stream stats in the top-right corner during playback."
+        #else
+        "Continuous Play automatically advances TV episodes and is enabled by default. Double-Tap to Seek adds left and right double-tap seek zones in the player and defaults to 5 seconds back and 15 seconds forward. Forced Only limits automatic subtitle selection to forced tracks. Force AVPlayer and Force VLCKit bypass automatic engine selection. Enabling one disables the other. Force AVPlayer may fail on formats AVPlayer cannot handle. Player Debug Overlay shows stream stats in the top-right corner during playback."
+        #endif
     }
 
     private var formattedCacheSize: String {

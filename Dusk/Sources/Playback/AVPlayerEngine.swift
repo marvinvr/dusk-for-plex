@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreMedia
 import SwiftUI
 
 /// Native AVPlayer-based playback engine for MP4/MOV with standard codecs.
@@ -80,6 +81,7 @@ final class AVPlayerEngine: PlaybackEngine {
         hasReportedPlaybackEnded = false
 
         let item = AVPlayerItem(url: url)
+        item.textStyleRules = subtitleTextStyleRules
         player.replaceCurrentItem(with: item)
         observePlaybackEnd(for: item)
         addTimeObserver()
@@ -251,6 +253,20 @@ final class AVPlayerEngine: PlaybackEngine {
         state = .stopped
         isBuffering = false
         onPlaybackEnded?()
+    }
+
+    private var subtitleTextStyleRules: [AVTextStyleRule] {
+        let attributes: [String: Any] = [
+            kCMTextMarkupAttribute_ForegroundColorARGB as String: [1.0, 1.0, 1.0, 1.0],
+            kCMTextMarkupAttribute_CharacterBackgroundColorARGB as String: [0.68, 0.0, 0.0, 0.0],
+            kCMTextMarkupAttribute_CharacterEdgeStyle as String: kCMTextMarkupCharacterEdgeStyle_DropShadow,
+        ]
+
+        guard let rule = AVTextStyleRule(textMarkupAttributes: attributes) else {
+            return []
+        }
+
+        return [rule]
     }
 
     // MARK: - Private: Duration & Tracks

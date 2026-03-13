@@ -121,27 +121,15 @@ final class PlayerViewModel {
         touchControls()
     }
 
-    func skipForward() {
-        guard duration > 0 else { return }
-        engine.seek(to: min(currentTime + 15, duration))
-        touchControls()
-    }
-
-    func skipBackward() {
-        engine.seek(to: max(currentTime - 15, 0))
-        touchControls()
+    func seek(by offset: TimeInterval, revealControls: Bool = false) {
+        seek(to: displayPosition + offset, revealControls: revealControls)
     }
 
     func skipActiveMarker() {
         guard let marker = activeSkipMarker else { return }
 
         let targetTime = TimeInterval(marker.endTimeOffset) / 1000.0
-        if duration > 0 {
-            engine.seek(to: min(targetTime, duration))
-        } else {
-            engine.seek(to: targetTime)
-        }
-        touchControls()
+        seek(to: targetTime, revealControls: true)
     }
 
     // MARK: - Scrubbing
@@ -201,6 +189,23 @@ final class PlayerViewModel {
                     self.showControls = false
                 }
             }
+        }
+    }
+
+    private func seek(to position: TimeInterval, revealControls: Bool) {
+        let clampedPosition: TimeInterval
+        if duration > 0 {
+            clampedPosition = min(max(position, 0), duration)
+        } else {
+            clampedPosition = max(position, 0)
+        }
+
+        engine.seek(to: clampedPosition)
+
+        if revealControls {
+            touchControls()
+        } else if showControls {
+            scheduleHide()
         }
     }
 

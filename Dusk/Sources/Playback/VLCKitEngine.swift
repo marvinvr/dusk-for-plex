@@ -67,6 +67,7 @@ final class VLCKitEngine: NSObject, PlaybackEngine {
         availableAudioTracks = []
 
         let media = VLCMedia(url: url)
+        applySubtitleStyling(to: media)
         mediaPlayer.media = media
         mediaPlayer.play()
     }
@@ -168,6 +169,15 @@ final class VLCKitEngine: NSObject, PlaybackEngine {
         if lengthMs > 0 {
             duration = TimeInterval(lengthMs) / 1000.0
         }
+    }
+
+    private func applySubtitleStyling(to media: VLCMedia) {
+        media.addOption(":freetype-color=#FFFFFF")
+        media.addOption(":freetype-background-color=#000000")
+        media.addOption(":freetype-background-opacity=110")
+        media.addOption(":freetype-shadow-color=#000000")
+        media.addOption(":freetype-shadow-opacity=80")
+        media.addOption(":freetype-shadow-distance=1")
     }
 
     /// Build AudioTrack/SubtitleTrack arrays from VLCKit's track name/index lists.
