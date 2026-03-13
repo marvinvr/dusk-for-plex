@@ -70,7 +70,8 @@ struct EpisodeDetailView: View {
 
     @ViewBuilder
     private func heroSection(_ details: PlexMediaDetails, topInset: CGFloat, containerWidth: CGFloat) -> some View {
-        let heroHeight = 320 + topInset
+        let heroHeight = 380 + topInset
+        let posterWidth: CGFloat = 120
         let backdropWidth = Int(containerWidth.rounded(.up))
         let backdropHeight = Int(heroHeight.rounded(.up))
 
@@ -89,7 +90,7 @@ struct EpisodeDetailView: View {
             .frame(maxWidth: .infinity)
 
             HStack(alignment: .bottom, spacing: 16) {
-                if let posterURL = viewModel.posterURL(width: 100, height: 150) {
+                if let posterURL = viewModel.posterURL(width: 120, height: 180) {
                     AsyncImage(url: posterURL) { phase in
                         switch phase {
                         case .success(let image):
@@ -102,7 +103,7 @@ struct EpisodeDetailView: View {
                                 .aspectRatio(2.0 / 3.0, contentMode: .fit)
                         }
                     }
-                    .frame(width: 100)
+                    .frame(width: posterWidth)
                     .clipShape(RoundedRectangle(cornerRadius: 16))
                     .shadow(color: .black.opacity(0.4), radius: 12, y: 6)
                 }

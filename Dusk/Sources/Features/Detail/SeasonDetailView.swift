@@ -64,7 +64,7 @@ struct SeasonDetailView: View {
 
     @ViewBuilder
     private func heroSection(_ details: PlexMediaDetails, topInset: CGFloat, containerWidth: CGFloat) -> some View {
-        let heroHeight = 340 + topInset
+        let heroHeight = 400 + topInset
         let backdropWidth = Int(containerWidth.rounded(.up))
         let backdropHeight = Int(heroHeight.rounded(.up))
 
@@ -198,8 +198,9 @@ struct SeasonDetailView: View {
     @ViewBuilder
     private var seasonArtwork: some View {
         let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        let posterWidth: CGFloat = 124
 
-        if let posterURL = viewModel.posterURL(width: 112, height: 168) {
+        if let posterURL = viewModel.posterURL(width: 124, height: 186) {
             AsyncImage(url: posterURL) { phase in
                 switch phase {
                 case .success(let image):
@@ -210,13 +211,13 @@ struct SeasonDetailView: View {
                     shape.fill(Color.duskBackground)
                 }
             }
-            .frame(width: 112)
+            .frame(width: posterWidth)
             .aspectRatio(2.0 / 3.0, contentMode: .fit)
             .clipShape(shape)
         } else {
             shape
                 .fill(Color.duskBackground)
-                .frame(width: 112)
+                .frame(width: posterWidth)
                 .aspectRatio(2.0 / 3.0, contentMode: .fit)
         }
     }
