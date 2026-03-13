@@ -29,6 +29,11 @@ struct PlexSeason: Codable, Sendable, Identifiable {
 }
 
 extension PlexSeason {
+    var isPartiallyWatched: Bool {
+        guard let total = leafCount, let viewed = viewedLeafCount else { return false }
+        return total > 0 && viewed > 0 && viewed < total
+    }
+
     /// Whether all episodes in this season have been watched.
     var isFullyWatched: Bool {
         guard let total = leafCount, let viewed = viewedLeafCount else { return false }

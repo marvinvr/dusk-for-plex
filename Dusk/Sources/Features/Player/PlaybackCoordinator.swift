@@ -71,7 +71,22 @@ final class PlaybackCoordinator {
         isLoading = true
         defer { isLoading = false }
 
-        _ = await startPlaybackSession(ratingKey: ratingKey, presentPlayer: true)
+        _ = await startPlaybackSession(
+            ratingKey: ratingKey,
+            startPositionOverride: nil,
+            presentPlayer: true
+        )
+    }
+
+    func playFromStart(ratingKey: String) async {
+        isLoading = true
+        defer { isLoading = false }
+
+        _ = await startPlaybackSession(
+            ratingKey: ratingKey,
+            startPositionOverride: 0,
+            presentPlayer: true
+        )
     }
 
     /// Called when the full-screen player cover is dismissed.
@@ -135,7 +150,11 @@ final class PlaybackCoordinator {
     }
 
     @discardableResult
-    private func startPlaybackSession(ratingKey: String, presentPlayer: Bool) async -> Bool {
+    private func startPlaybackSession(
+        ratingKey: String,
+        startPositionOverride: TimeInterval?,
+        presentPlayer: Bool
+    ) async -> Bool {
         loadError = nil
         cancelUpNextCountdown()
         upNextPresentation = nil
@@ -180,7 +199,7 @@ final class PlaybackCoordinator {
             engine = newEngine
             playbackSource = PlaybackSource(
                 url: url,
-                startPosition: details.viewOffset.map { TimeInterval($0) / 1000.0 }
+                startPosition: startPositionOverride ?? details.viewOffset.map { TimeInterval($0) / 1000.0 }
             )
             debugInfo = PlaybackDebugInfo(
                 title: details.title,
@@ -362,7 +381,11 @@ final class PlaybackCoordinator {
         upNextPresentation = presentation
 
         let nextRatingKey = presentation.episode.ratingKey
-        let didStart = await startPlaybackSession(ratingKey: nextRatingKey, presentPlayer: false)
+        let didStart = await startPlaybackSession(
+            ratingKey: nextRatingKey,
+            startPositionOverride: nil,
+            presentPlayer: false
+        )
         if didStart { return }
 
         guard var failedPresentation = upNextPresentation else { return }

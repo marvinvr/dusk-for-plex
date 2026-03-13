@@ -256,6 +256,9 @@ struct ShowDetailView: View {
                             )
                         }
                         .frame(width: layout.posterWidth, alignment: .topLeading)
+                        .contextMenu {
+                            seasonContextMenu(season)
+                        }
                         #else
                         NavigationLink(value: AppNavigationRoute.media(type: .season, ratingKey: season.ratingKey)) {
                             PosterCard(
@@ -268,6 +271,9 @@ struct ShowDetailView: View {
                         }
                         .buttonStyle(.plain)
                         .duskSuppressTVOSButtonChrome()
+                        .contextMenu {
+                            seasonContextMenu(season)
+                        }
                         #endif
                     }
                 }
@@ -288,6 +294,35 @@ struct ShowDetailView: View {
         )
 
         return (columns, posterWidth)
+    }
+
+    @ViewBuilder
+    private func seasonContextMenu(_ season: PlexSeason) -> some View {
+        if season.isPartiallyWatched {
+            Button {
+                Task { await viewModel.markSeason(season, watched: true) }
+            } label: {
+                Label("Mark Watched", systemImage: "eye")
+            }
+
+            Button {
+                Task { await viewModel.markSeason(season, watched: false) }
+            } label: {
+                Label("Mark Unwatched", systemImage: "eye.slash")
+            }
+        } else if season.isFullyWatched {
+            Button {
+                Task { await viewModel.markSeason(season, watched: false) }
+            } label: {
+                Label("Mark Unwatched", systemImage: "eye.slash")
+            }
+        } else {
+            Button {
+                Task { await viewModel.markSeason(season, watched: true) }
+            } label: {
+                Label("Mark Watched", systemImage: "eye")
+            }
+        }
     }
 
     // MARK: - Error
@@ -313,6 +348,7 @@ struct ShowDetailView: View {
 
 struct SeasonDetailView: View {
     @Environment(PlexService.self) private var plexService
+    @Environment(PlaybackCoordinator.self) private var playback
     @State private var viewModel: SeasonDetailViewModel
 
     private let horizontalPadding: CGFloat = 20
@@ -352,10 +388,7 @@ struct SeasonDetailView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     heroSection(details, topInset: geometry.safeAreaInsets.top, containerWidth: geometry.size.width)
                     if let summary = details.summary, !summary.isEmpty {
-                        Text(summary)
-                            .font(.body)
-                            .foregroundStyle(Color.duskTextSecondary)
-                            .lineSpacing(4)
+                        ExpandableSummaryText(text: summary)
                             .padding(.horizontal, horizontalPadding)
                             .padding(.top, 20)
                     }
@@ -476,6 +509,24 @@ struct SeasonDetailView: View {
                         .buttonStyle(.plain)
                         .duskSuppressTVOSButtonChrome()
                         .duskTVOSFocusEffectShape(Rectangle())
+                        .contextMenu {
+                            if episode.isPartiallyWatched {
+                                Button {
+                                    Task { await playback.playFromStart(ratingKey: episode.ratingKey) }
+                                } label: {
+                                    Label("Play from Start", systemImage: "arrow.counterclockwise")
+                                }
+                            }
+
+                            Button {
+                                Task { await viewModel.toggleWatched(for: episode) }
+                            } label: {
+                                Label(
+                                    episode.isWatched ? "Mark Unwatched" : "Mark Watched",
+                                    systemImage: episode.isWatched ? "eye.slash" : "eye"
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -607,6 +658,18 @@ private struct SeasonEpisodeRow: View {
                     .aspectRatio(16.0 / 9.0, contentMode: .fill)
             }
 
+            Image(systemName: "play.fill")
+                .font(.system(size: artworkWidth * 0.16, weight: .semibold))
+                .foregroundStyle(Color.white.opacity(0.92))
+                .padding(artworkWidth * 0.09)
+                .background(.ultraThinMaterial, in: Circle())
+                .overlay(
+                    Circle()
+                        .strokeBorder(Color.white.opacity(0.10), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+
             if let progress {
                 GeometryReader { geometry in
                     VStack {
@@ -626,6 +689,77 @@ private struct SeasonEpisodeRow: View {
         }
         .frame(width: artworkWidth)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+private struct ExpandableSummaryText: View {
+    let text: String
+
+    private let collapsedLineLimit = 9
+
+    @State private var isExpanded = false
+    @State private var collapsedHeight: CGFloat = 0
+    @State private var expandedHeight: CGFloat = 0
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(text)
+                .font(.body)
+                .foregroundStyle(Color.duskTextSecondary)
+                .lineSpacing(4)
+                .lineLimit(isExpanded ? nil : collapsedLineLimit)
+                .truncationMode(.tail)
+                .overlay(alignment: .topLeading) {
+                    ZStack {
+                        measurementText(lineLimit: collapsedLineLimit) { height in
+                            collapsedHeight = height
+                        }
+
+                        measurementText(lineLimit: nil) { height in
+                            expandedHeight = height
+                        }
+                    }
+                    .hidden()
+                    .allowsHitTesting(false)
+                }
+
+            if isExpandable {
+                Button(isExpanded ? "Show Less" : "Show More") {
+                    isExpanded.toggle()
+                }
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Color.duskAccent)
+                .buttonStyle(.plain)
+                .duskSuppressTVOSButtonChrome()
+            }
+        }
+    }
+
+    private var isExpandable: Bool {
+        expandedHeight > collapsedHeight + 1
+    }
+
+    private func measurementText(
+        lineLimit: Int?,
+        onHeightChange: @escaping (CGFloat) -> Void
+    ) -> some View {
+        Text(text)
+            .font(.body)
+            .lineSpacing(4)
+            .lineLimit(lineLimit)
+            .truncationMode(.tail)
+            .fixedSize(horizontal: false, vertical: true)
+            .background {
+                GeometryReader { proxy in
+                    Color.clear
+                        .onAppear {
+                            onHeightChange(proxy.size.height)
+                        }
+                        .onChange(of: proxy.size.height) { _, newHeight in
+                            onHeightChange(newHeight)
+                        }
+                }
+            }
     }
 }
 
@@ -675,10 +809,7 @@ struct EpisodeDetailView: View {
                         .padding(.horizontal, 20)
                         .padding(.top, 24)
                     if let summary = details.summary, !summary.isEmpty {
-                        Text(summary)
-                            .font(.body)
-                            .foregroundStyle(Color.duskTextSecondary)
-                            .lineSpacing(4)
+                        ExpandableSummaryText(text: summary)
                             .padding(.horizontal, 20)
                             .padding(.top, 24)
                     }

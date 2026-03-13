@@ -22,15 +22,25 @@ final class ShowDetailViewModel {
         error = nil
 
         do {
-            async let detailsReq = plexService.getMediaDetails(ratingKey: ratingKey)
-            async let seasonsReq = plexService.getSeasons(showKey: ratingKey)
-            let (d, s) = try await (detailsReq, seasonsReq)
-            details = d
-            seasons = s.sorted { $0.index < $1.index }
+            try await reload()
         } catch {
             self.error = error.localizedDescription
         }
         isLoading = false
+    }
+
+    func markSeason(_ season: PlexSeason, watched: Bool) async {
+        do {
+            if watched {
+                try await plexService.scrobble(ratingKey: season.ratingKey)
+            } else {
+                try await plexService.unscrobble(ratingKey: season.ratingKey)
+            }
+
+            try await reload()
+        } catch {
+            self.error = error.localizedDescription
+        }
     }
 
     // MARK: - Computed Helpers
@@ -81,6 +91,14 @@ final class ShowDetailViewModel {
               viewed > 0 else { return nil }
         return Double(viewed) / Double(total)
     }
+
+    private func reload() async throws {
+        async let detailsReq = plexService.getMediaDetails(ratingKey: ratingKey)
+        async let seasonsReq = plexService.getSeasons(showKey: ratingKey)
+        let (loadedDetails, loadedSeasons) = try await (detailsReq, seasonsReq)
+        details = loadedDetails
+        seasons = loadedSeasons.sorted { $0.index < $1.index }
+    }
 }
 
 @MainActor
@@ -115,6 +133,24 @@ final class SeasonDetailViewModel {
         }
 
         isLoading = false
+    }
+
+    func toggleWatched(for episode: PlexEpisode) async {
+        do {
+            if episode.isWatched {
+                try await plexService.unscrobble(ratingKey: episode.ratingKey)
+            } else {
+                try await plexService.scrobble(ratingKey: episode.ratingKey)
+            }
+
+            async let detailsReq = plexService.getMediaDetails(ratingKey: ratingKey)
+            async let episodesReq = plexService.getEpisodes(seasonKey: ratingKey)
+            let (loadedDetails, loadedEpisodes) = try await (detailsReq, episodesReq)
+            details = loadedDetails
+            episodes = loadedEpisodes.sorted { ($0.index ?? 0) < ($1.index ?? 0) }
+        } catch {
+            self.error = error.localizedDescription
+        }
     }
 
     var showTitle: String? {
