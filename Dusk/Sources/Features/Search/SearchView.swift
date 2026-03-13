@@ -246,41 +246,10 @@ struct SearchView: View {
     }
 
     private func iconForType(_ type: PlexMediaType) -> String {
-        switch type {
-        case .movie: return "film"
-        case .show: return "tv"
-        case .person: return "person.fill"
-        case .episode: return "play.rectangle"
-        case .season: return "rectangle.stack"
-        default: return "square.grid.2x2"
-        }
+        MediaTextFormatter.mediaTypeIconName(type)
     }
 
     private func episodeLabel(season: Int?, episode: Int?) -> String? {
-        switch (season, episode) {
-        case let (s?, e?):
-            return "Season \(s), Episode \(e)"
-        case let (nil, e?):
-            return "Episode \(e)"
-        default:
-            return nil
-        }
-    }
-}
-
-// MARK: - Circular Progress
-
-private struct CircularProgressView: View {
-    let progress: Double
-
-    var body: some View {
-        ZStack {
-            Circle()
-                .stroke(Color.duskTextSecondary.opacity(0.3), lineWidth: 2)
-            Circle()
-                .trim(from: 0, to: progress)
-                .stroke(Color.duskAccent, style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-        }
+        MediaTextFormatter.seasonEpisodeLabel(season: season, episode: episode, separator: ", ")
     }
 }

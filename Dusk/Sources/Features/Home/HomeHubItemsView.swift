@@ -1,7 +1,7 @@
 import SwiftUI
 
-struct LibraryItemsView: View {
-    @State private var viewModel: LibraryItemsViewModel
+struct HomeHubItemsView: View {
+    @State private var viewModel: HomeHubItemsViewModel
 
     private let horizontalPadding: CGFloat = 12
     private let gridSpacing: CGFloat = 12
@@ -9,9 +9,9 @@ struct LibraryItemsView: View {
     private let preferredPosterWidth: CGFloat = 104
     private let minimumColumnCount = 2
 
-    init(library: PlexLibrary, plexService: PlexService) {
-        _viewModel = State(initialValue: LibraryItemsViewModel(
-            library: library,
+    init(hub: PlexHub, plexService: PlexService) {
+        _viewModel = State(initialValue: HomeHubItemsViewModel(
+            hub: hub,
             plexService: plexService
         ))
     }
@@ -24,7 +24,7 @@ struct LibraryItemsView: View {
                 FeatureLoadingView()
             } else if let error = viewModel.error, viewModel.items.isEmpty {
                 FeatureErrorView(message: error) {
-                    Task { await viewModel.loadItems() }
+                    Task { await viewModel.reloadItems() }
                 }
             } else if viewModel.items.isEmpty {
                 emptyView
@@ -32,14 +32,12 @@ struct LibraryItemsView: View {
                 itemsGrid
             }
         }
-        .duskNavigationTitle(viewModel.library.title)
+        .duskNavigationTitle(viewModel.navigationTitle)
         .duskNavigationBarTitleDisplayModeLarge()
         .task {
             await viewModel.loadItems()
         }
     }
-
-    // MARK: - Grid
 
     private var itemsGrid: some View {
         GeometryReader { geometry in
@@ -86,9 +84,6 @@ struct LibraryItemsView: View {
                                 }
                             )
                         }
-                        .onAppear {
-                            Task { await viewModel.loadMoreIfNeeded(currentItem: item) }
-                        }
                         #else
                         NavigationLink(value: AppNavigationRoute.destination(for: item)) {
                             PosterCard(
@@ -113,28 +108,17 @@ struct LibraryItemsView: View {
                                 }
                             )
                         }
-                        .onAppear {
-                            Task { await viewModel.loadMoreIfNeeded(currentItem: item) }
-                        }
                         #endif
                     }
                 }
                 .padding(.horizontal, horizontalPadding)
                 .padding(.vertical, 8)
-
-                if viewModel.isLoadingMore {
-                    ProgressView()
-                        .tint(Color.duskAccent)
-                        .padding(.vertical, 20)
-                }
             }
             .scrollIndicators(.hidden)
         }
     }
 
-    // MARK: - Empty / Error
-
     private var emptyView: some View {
-        FeatureEmptyStateView(systemImage: "film", title: "This library is empty")
+        FeatureEmptyStateView(systemImage: "film", title: "No items found")
     }
 }

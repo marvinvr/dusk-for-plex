@@ -12,10 +12,11 @@ struct LibrariesView: View {
 
                 if let vm = viewModel {
                     if vm.isLoading && vm.libraries.isEmpty {
-                        ProgressView()
-                            .tint(Color.duskAccent)
+                        FeatureLoadingView()
                     } else if let error = vm.error, vm.libraries.isEmpty {
-                        errorView(error)
+                        FeatureErrorView(message: error) {
+                            Task { await viewModel?.loadLibraries() }
+                        }
                     } else if vm.libraries.isEmpty {
                         emptyView
                     } else {
@@ -72,31 +73,7 @@ struct LibrariesView: View {
     // MARK: - Empty / Error
 
     private var emptyView: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "rectangle.stack")
-                .font(.largeTitle)
-                .foregroundStyle(Color.duskTextSecondary)
-            Text("No libraries found")
-                .foregroundStyle(Color.duskTextSecondary)
-        }
-    }
-
-    @ViewBuilder
-    private func errorView(_ message: String) -> some View {
-        VStack(spacing: 16) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.largeTitle)
-                .foregroundStyle(Color.duskTextSecondary)
-            Text(message)
-                .foregroundStyle(Color.duskTextSecondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-            Button("Retry") {
-                Task { await viewModel?.loadLibraries() }
-            }
-            .foregroundStyle(Color.duskAccent)
-            .duskSuppressTVOSButtonChrome()
-        }
+        FeatureEmptyStateView(systemImage: "rectangle.stack", title: "No libraries found")
     }
 }
 

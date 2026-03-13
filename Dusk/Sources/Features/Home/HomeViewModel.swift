@@ -34,11 +34,7 @@ final class HomeViewModel {
 
     func setWatched(_ watched: Bool, for item: PlexItem) async {
         do {
-            if watched {
-                try await plexService.scrobble(ratingKey: item.ratingKey)
-            } else {
-                try await plexService.unscrobble(ratingKey: item.ratingKey)
-            }
+            try await plexService.setWatched(watched, ratingKey: item.ratingKey)
             await load()
         } catch {
             self.error = error.localizedDescription
@@ -57,9 +53,7 @@ final class HomeViewModel {
 
     /// Progress fraction (0–1) for partially watched items. Nil if unwatched.
     func progress(for item: PlexItem) -> Double? {
-        guard let offset = item.viewOffset, offset > 0,
-              let duration = item.duration, duration > 0 else { return nil }
-        return Double(offset) / Double(duration)
+        MediaTextFormatter.progress(durationMs: item.duration, offsetMs: item.viewOffset)
     }
 
     /// Display title for continue watching items.
@@ -74,7 +68,7 @@ final class HomeViewModel {
     /// Subtitle for continue watching: natural-language episode label or year.
     func displaySubtitle(for item: PlexItem) -> String? {
         if item.type == .episode {
-            return formatEpisode(season: item.parentIndex, episode: item.index) ?? item.title
+            return MediaTextFormatter.seasonEpisodeLabel(season: item.parentIndex, episode: item.index) ?? item.title
         }
         return item.year.map(String.init)
     }
@@ -108,17 +102,6 @@ final class HomeViewModel {
         return !itemTypes.isEmpty && itemTypes.isSubset(of: [.movie, .show, .season, .episode])
     }
 
-    private func formatEpisode(season: Int?, episode: Int?) -> String? {
-        switch (season, episode) {
-        case let (s?, e?):
-            return "Season \(s) · Episode \(e)"
-        case let (nil, e?):
-            return "Episode \(e)"
-        default:
-            return nil
-        }
-    }
-
     private func shouldHideHomeHub(_ hub: PlexHub) -> Bool {
         let fields = [hub.title, hub.key, hub.hubIdentifier]
             .compactMap { $0?.lowercased() }
@@ -142,110 +125,5 @@ final class HomeViewModel {
         default:
             return normalizedKey.contains("/playlists/")
         }
-    }
-}
-
-@MainActor
-@Observable
-final class HomeHubItemsViewModel {
-    let hub: PlexHub
-
-    private let plexService: PlexService
-
-    private(set) var items: [PlexItem] = []
-    private(set) var isLoading = false
-    private(set) var error: String?
-
-    init(hub: PlexHub, plexService: PlexService) {
-        self.hub = hub
-        self.plexService = plexService
-    }
-
-    var navigationTitle: String {
-        normalizedTitle(for: hub.title)
-    }
-
-    func loadItems() async {
-        guard items.isEmpty else { return }
-        await reloadItems()
-    }
-
-    func reloadItems() async {
-        isLoading = true
-        error = nil
-
-        do {
-            if let hubKey = hub.key {
-                items = try await plexService.getHubItems(hubKey: hubKey)
-            }
-        } catch {
-            self.error = error.localizedDescription
-        }
-
-        isLoading = false
-    }
-
-    func setWatched(_ watched: Bool, for item: PlexItem) async {
-        do {
-            if watched {
-                try await plexService.scrobble(ratingKey: item.ratingKey)
-            } else {
-                try await plexService.unscrobble(ratingKey: item.ratingKey)
-            }
-            await reloadItems()
-        } catch {
-            self.error = error.localizedDescription
-        }
-    }
-
-    func posterURL(for item: PlexItem, width: Int, height: Int) -> URL? {
-        plexService.imageURL(for: item.preferredPosterPath, width: width, height: height)
-    }
-
-    func progress(for item: PlexItem) -> Double? {
-        guard let offset = item.viewOffset, offset > 0,
-              let duration = item.duration, duration > 0
-        else { return nil }
-        return Double(offset) / Double(duration)
-    }
-
-    func subtitle(for item: PlexItem) -> String? {
-        switch item.type {
-        case .movie:
-            return item.year.map(String.init)
-        case .show:
-            if let childCount = item.childCount {
-                return "\(childCount) season\(childCount == 1 ? "" : "s")"
-            }
-            return item.year.map(String.init)
-        case .episode:
-            return formatEpisode(season: item.parentIndex, episode: item.index) ?? item.grandparentTitle
-        default:
-            return item.year.map(String.init)
-        }
-    }
-
-    private func formatEpisode(season: Int?, episode: Int?) -> String? {
-        switch (season, episode) {
-        case let (s?, e?):
-            return "Season \(s) · Episode \(e)"
-        case let (nil, e?):
-            return "Episode \(e)"
-        default:
-            return nil
-        }
-    }
-
-    private func normalizedTitle(for title: String) -> String {
-        guard title.lowercased().contains("recently added") else { return title }
-
-        let suffix = title.replacingOccurrences(
-            of: "Recently Added",
-            with: "",
-            options: [.caseInsensitive]
-        )
-        .trimmingCharacters(in: .whitespacesAndNewlines)
-
-        return suffix.isEmpty ? "Recently added" : "Recently added \(suffix)"
     }
 }

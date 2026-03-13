@@ -31,12 +31,7 @@ final class MovieDetailViewModel {
     func toggleWatched() async {
         guard details != nil else { return }
         do {
-            if isWatched {
-                try await plexService.unscrobble(ratingKey: ratingKey)
-            } else {
-                try await plexService.scrobble(ratingKey: ratingKey)
-            }
-            // Reload to get updated watch state
+            try await plexService.setWatched(!isWatched, ratingKey: ratingKey)
             self.details = try await plexService.getMediaDetails(ratingKey: ratingKey)
         } catch {
             self.error = error.localizedDescription
@@ -56,25 +51,12 @@ final class MovieDetailViewModel {
     }
 
     var formattedDuration: String? {
-        guard let ms = details?.duration, ms > 0 else { return nil }
-        let totalMinutes = ms / 60_000
-        let hours = totalMinutes / 60
-        let minutes = totalMinutes % 60
-        if hours > 0 {
-            return "\(hours)h \(minutes)m"
-        }
-        return "\(minutes)m"
+        MediaTextFormatter.playbackDuration(milliseconds: details?.duration)
     }
 
     var formattedResume: String? {
         guard let seconds = resumePositionSeconds else { return nil }
-        let totalMinutes = Int(seconds) / 60
-        let hours = totalMinutes / 60
-        let minutes = totalMinutes % 60
-        if hours > 0 {
-            return "\(hours)h \(minutes)m"
-        }
-        return "\(minutes)m"
+        return MediaTextFormatter.playbackDuration(milliseconds: Int(seconds * 1000))
     }
 
     var mediaInfo: String? {

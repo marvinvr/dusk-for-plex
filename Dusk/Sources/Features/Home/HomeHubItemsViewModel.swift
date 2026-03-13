@@ -2,21 +2,22 @@ import Foundation
 
 @MainActor
 @Observable
-final class LibraryItemsViewModel {
+final class HomeHubItemsViewModel {
+    let hub: PlexHub
+
     private let plexService: PlexService
-    let library: PlexLibrary
 
     private(set) var items: [PlexItem] = []
     private(set) var isLoading = false
-    private(set) var isLoadingMore = false
     private(set) var error: String?
-    private(set) var hasMoreItems = true
 
-    private let pageSize = 50
-
-    init(library: PlexLibrary, plexService: PlexService) {
-        self.library = library
+    init(hub: PlexHub, plexService: PlexService) {
+        self.hub = hub
         self.plexService = plexService
+    }
+
+    var navigationTitle: String {
+        normalizedTitle(for: hub.title)
     }
 
     func loadItems() async {
@@ -27,17 +28,15 @@ final class LibraryItemsViewModel {
     func reloadItems() async {
         isLoading = true
         error = nil
+
         do {
-            let fetched = try await plexService.getLibraryItems(
-                sectionId: library.key,
-                start: 0,
-                size: pageSize
-            )
-            items = fetched
-            hasMoreItems = fetched.count >= pageSize
+            if let hubKey = hub.key {
+                items = try await plexService.getHubItems(hubKey: hubKey)
+            }
         } catch {
             self.error = error.localizedDescription
         }
+
         isLoading = false
     }
 
@@ -48,27 +47,6 @@ final class LibraryItemsViewModel {
         } catch {
             self.error = error.localizedDescription
         }
-    }
-
-    func loadMoreIfNeeded(currentItem: PlexItem) async {
-        guard hasMoreItems, !isLoadingMore,
-              let index = items.firstIndex(where: { $0.id == currentItem.id }),
-              index >= items.count - 10
-        else { return }
-
-        isLoadingMore = true
-        do {
-            let fetched = try await plexService.getLibraryItems(
-                sectionId: library.key,
-                start: items.count,
-                size: pageSize
-            )
-            items.append(contentsOf: fetched)
-            hasMoreItems = fetched.count >= pageSize
-        } catch {
-            // Silently ignore pagination errors — user can scroll again to retry
-        }
-        isLoadingMore = false
     }
 
     func posterURL(for item: PlexItem, width: Int, height: Int) -> URL? {
@@ -88,8 +66,23 @@ final class LibraryItemsViewModel {
                 return MediaTextFormatter.seasonCount(childCount)?.lowercased()
             }
             return item.year.map(String.init)
+        case .episode:
+            return MediaTextFormatter.seasonEpisodeLabel(season: item.parentIndex, episode: item.index) ?? item.grandparentTitle
         default:
             return item.year.map(String.init)
         }
+    }
+
+    private func normalizedTitle(for title: String) -> String {
+        guard title.lowercased().contains("recently added") else { return title }
+
+        let suffix = title.replacingOccurrences(
+            of: "Recently Added",
+            with: "",
+            options: [.caseInsensitive]
+        )
+        .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return suffix.isEmpty ? "Recently added" : "Recently added \(suffix)"
     }
 }
