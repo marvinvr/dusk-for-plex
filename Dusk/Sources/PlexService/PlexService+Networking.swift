@@ -142,7 +142,9 @@ extension PlexService {
         let path = path.hasPrefix("/") ? path : "/\(path)"
         guard var components = URLComponents(string: base + path) else { return nil }
         if let queryItems, !queryItems.isEmpty {
-            components.queryItems = queryItems
+            let queryNames = Set(queryItems.map(\.name))
+            let existingItems = (components.queryItems ?? []).filter { !queryNames.contains($0.name) }
+            components.queryItems = existingItems + queryItems
         }
         return components.url
     }

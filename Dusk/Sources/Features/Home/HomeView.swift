@@ -22,7 +22,7 @@ struct HomeView: View {
                         FeatureLoadingView()
                     } else if let error = viewModel.error, viewModel.hubs.isEmpty {
                         FeatureErrorView(message: error) {
-                            Task { await viewModel.load() }
+                            Task { await viewModel.load(maxRecentlyAddedItems: recentlyAddedInlineItemLimit) }
                         }
                     } else {
                         contentView(viewModel)
@@ -33,10 +33,10 @@ struct HomeView: View {
                 if viewModel == nil {
                     viewModel = HomeViewModel(plexService: plexService)
                 }
-                await viewModel?.load()
+                await viewModel?.load(maxRecentlyAddedItems: recentlyAddedInlineItemLimit)
             }
             .refreshable {
-                await viewModel?.load()
+                await viewModel?.load(maxRecentlyAddedItems: recentlyAddedInlineItemLimit)
             }
             .duskNavigationTitle("Home")
             .duskNavigationBarTitleDisplayModeLarge()

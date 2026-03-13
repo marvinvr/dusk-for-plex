@@ -2,6 +2,8 @@ import Foundation
 
 @MainActor @Observable
 final class HomeViewModel {
+    private var maxRecentlyAddedItems = 10
+
     private(set) var hubs: [PlexHub] = []
     private(set) var continueWatching: [PlexItem] = []
     private(set) var isLoading = false
@@ -13,7 +15,11 @@ final class HomeViewModel {
         self.plexService = plexService
     }
 
-    func load() async {
+    func load(maxRecentlyAddedItems: Int? = nil) async {
+        if let maxRecentlyAddedItems {
+            self.maxRecentlyAddedItems = maxRecentlyAddedItems
+        }
+
         isLoading = true
         error = nil
 
@@ -21,7 +27,8 @@ final class HomeViewModel {
             async let fetchedHubs = plexService.getHubs()
             async let fetchedOnDeck = plexService.getContinueWatching()
 
-            hubs = try await fetchedHubs.filter { !shouldHideHomeHub($0) }
+            let baseHubs = try await fetchedHubs.filter { !shouldHideHomeHub($0) }
+            hubs = try await expandedRecentlyAddedHubs(from: baseHubs)
             continueWatching = try await fetchedOnDeck.filter { !shouldHideHomeItem($0) }
         } catch {
             self.error = error.localizedDescription
@@ -98,6 +105,37 @@ final class HomeViewModel {
 
         let itemTypes = Set(visibleItems(in: hub).map(\.type))
         return !itemTypes.isEmpty && itemTypes.isSubset(of: [.movie, .show, .season, .episode])
+    }
+
+    private func expandedRecentlyAddedHubs(from hubs: [PlexHub]) async throws -> [PlexHub] {
+        var expandedHubs: [PlexHub] = []
+        expandedHubs.reserveCapacity(hubs.count)
+
+        for hub in hubs {
+            guard isRecentlyAddedHub(hub), let hubKey = hub.key else {
+                expandedHubs.append(hub)
+                continue
+            }
+
+            let items = try await plexService.getHubItems(
+                hubKey: hubKey,
+                size: maxRecentlyAddedItems
+            )
+
+            expandedHubs.append(
+                PlexHub(
+                    key: hub.key,
+                    title: hub.title,
+                    type: hub.type,
+                    hubIdentifier: hub.hubIdentifier,
+                    size: hub.size,
+                    more: hub.more,
+                    items: items
+                )
+            )
+        }
+
+        return expandedHubs
     }
 
     private func shouldHideHomeHub(_ hub: PlexHub) -> Bool {

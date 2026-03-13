@@ -71,8 +71,21 @@ extension PlexService {
         try await fetchMetadata(path: "/library/onDeck")
     }
 
-    func getHubItems(hubKey: String) async throws -> [PlexItem] {
-        try await fetchMetadata(path: hubKey)
+    func getHubItems(hubKey: String, start: Int = 0, size: Int? = nil) async throws -> [PlexItem] {
+        var queryItems: [URLQueryItem] = []
+
+        if start > 0 || size != nil {
+            queryItems.append(URLQueryItem(name: "X-Plex-Container-Start", value: String(start)))
+        }
+
+        if let size {
+            queryItems.append(URLQueryItem(name: "X-Plex-Container-Size", value: String(size)))
+        }
+
+        return try await fetchMetadata(
+            path: hubKey,
+            queryItems: queryItems.isEmpty ? nil : queryItems
+        )
     }
 
     func search(query: String) async throws -> [PlexSearchResult] {

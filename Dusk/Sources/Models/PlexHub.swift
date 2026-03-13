@@ -18,6 +18,24 @@ struct PlexHub: Codable, Sendable, Identifiable, Hashable {
         case items = "Metadata"
     }
 
+    init(
+        key: String?,
+        title: String,
+        type: String?,
+        hubIdentifier: String?,
+        size: Int?,
+        more: Bool?,
+        items: [PlexItem]
+    ) {
+        self.key = key
+        self.title = title
+        self.type = type
+        self.hubIdentifier = hubIdentifier
+        self.size = size
+        self.more = more
+        self.items = items
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         key = try container.decodeIfPresent(String.self, forKey: .key)
