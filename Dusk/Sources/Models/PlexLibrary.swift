@@ -1,9 +1,36 @@
 import Foundation
 
+enum PlexLibraryType: String, Codable, Sendable, CaseIterable {
+    case movie
+    case show
+
+    var tabTitle: String {
+        switch self {
+        case .movie:
+            "Movies"
+        case .show:
+            "TV Shows"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .movie:
+            "film"
+        case .show:
+            "tv"
+        }
+    }
+}
+
 /// A library section on the Plex server (e.g. "Movies", "TV Shows").
 /// Returned from `GET /library/sections` in the `Directory` array.
 struct PlexLibrary: Codable, Sendable, Identifiable {
     var id: String { key }
+
+    var libraryType: PlexLibraryType? {
+        PlexLibraryType(rawValue: type)
+    }
 
     let key: String
     let title: String

@@ -100,7 +100,8 @@ struct HomeView: View {
                             imageURL: vm.landscapeImageURL(for: item, width: imageWidth, height: imageHeight),
                             progress: vm.progress(for: item),
                             width: continueWatchingCardWidth,
-                            imageAspectRatio: continueWatchingAspectRatio
+                            imageAspectRatio: continueWatchingAspectRatio,
+                            showsPlayOverlay: true
                         )
                     }
                     .buttonStyle(.plain)
@@ -136,7 +137,8 @@ struct HomeView: View {
                         subtitle: vm.displaySubtitle(for: item),
                         progress: vm.progress(for: item),
                         width: continueWatchingCardWidth,
-                        imageAspectRatio: continueWatchingAspectRatio
+                        imageAspectRatio: continueWatchingAspectRatio,
+                        showsPlayOverlay: true
                     )
                 }
                 .buttonStyle(.plain)

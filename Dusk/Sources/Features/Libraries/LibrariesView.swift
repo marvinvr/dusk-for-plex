@@ -2,49 +2,63 @@ import SwiftUI
 
 struct LibrariesView: View {
     @Environment(PlexService.self) private var plexService
+    let libraryType: PlexLibraryType
+    let viewModel: LibrariesViewModel
     @Binding var path: NavigationPath
-    @State private var viewModel: LibrariesViewModel?
 
     var body: some View {
         NavigationStack(path: $path) {
-            ZStack {
-                Color.duskBackground.ignoresSafeArea()
-
-                if let vm = viewModel {
-                    if vm.isLoading && vm.libraries.isEmpty {
-                        FeatureLoadingView()
-                    } else if let error = vm.error, vm.libraries.isEmpty {
-                        FeatureErrorView(message: error) {
-                            Task { await viewModel?.loadLibraries() }
-                        }
-                    } else if vm.libraries.isEmpty {
-                        emptyView
-                    } else {
-                        libraryList(vm)
-                    }
+            rootContent
+                .task {
+                    await viewModel.loadLibraries()
                 }
-            }
-            .task {
-                if viewModel == nil {
-                    viewModel = LibrariesViewModel(plexService: plexService)
-                }
-                await viewModel?.loadLibraries()
-            }
-            .duskNavigationTitle("Libraries")
-            .duskNavigationBarTitleDisplayModeLarge()
-            .duskAppNavigationDestinations()
+                .duskAppNavigationDestinations()
         }
     }
 
-    // MARK: - Library List
-
     @ViewBuilder
-    private func libraryList(_ vm: LibrariesViewModel) -> some View {
+    private var rootContent: some View {
+        let libraries = viewModel.libraries(for: libraryType)
+
+        if viewModel.isLoading && viewModel.libraries.isEmpty {
+            loadingView
+        } else if let error = viewModel.error, viewModel.libraries.isEmpty {
+            errorView(message: error)
+        } else if libraries.count == 1, let library = libraries.first {
+            LibraryItemsView(library: library, plexService: plexService)
+        } else if libraries.isEmpty {
+            emptyView
+        } else {
+            libraryList(libraries)
+        }
+    }
+
+    private var loadingView: some View {
+        ZStack {
+            Color.duskBackground.ignoresSafeArea()
+            FeatureLoadingView()
+        }
+        .duskNavigationTitle(libraryType.tabTitle)
+        .duskNavigationBarTitleDisplayModeLarge()
+    }
+
+    private func errorView(message: String) -> some View {
+        ZStack {
+            Color.duskBackground.ignoresSafeArea()
+            FeatureErrorView(message: message) {
+                Task { await viewModel.loadLibraries(force: true) }
+            }
+        }
+        .duskNavigationTitle(libraryType.tabTitle)
+        .duskNavigationBarTitleDisplayModeLarge()
+    }
+
+    private func libraryList(_ libraries: [PlexLibrary]) -> some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 12) {
-                ForEach(vm.libraries) { library in
+                ForEach(libraries) { library in
                     NavigationLink(value: AppNavigationRoute.library(library)) {
-                        libraryRow(library, vm: vm)
+                        LibraryRowContent(library: library, vm: viewModel)
                     }
                     .duskSuppressTVOSButtonChrome()
                 }
@@ -54,26 +68,21 @@ struct LibrariesView: View {
             .padding(.bottom, 8)
         }
         .scrollIndicators(.hidden)
+        .background(Color.duskBackground.ignoresSafeArea())
+        .duskNavigationTitle(libraryType.tabTitle)
+        .duskNavigationBarTitleDisplayModeLarge()
     }
-
-    @ViewBuilder
-    private func libraryRow(_ library: PlexLibrary, vm: LibrariesViewModel) -> some View {
-        LibraryRowContent(library: library, vm: vm)
-    }
-
-    private func libraryIconPlaceholder(_ iconName: String) -> some View {
-        Color.duskSurface
-            .overlay {
-                Image(systemName: iconName)
-                    .font(.title2)
-                    .foregroundStyle(Color.duskTextSecondary)
-            }
-    }
-
-    // MARK: - Empty / Error
 
     private var emptyView: some View {
-        FeatureEmptyStateView(systemImage: "rectangle.stack", title: "No libraries found")
+        ZStack {
+            Color.duskBackground.ignoresSafeArea()
+            FeatureEmptyStateView(
+                systemImage: libraryType.systemImage,
+                title: "No \(libraryType.tabTitle) libraries found"
+            )
+        }
+        .duskNavigationTitle(libraryType.tabTitle)
+        .duskNavigationBarTitleDisplayModeLarge()
     }
 }
 
@@ -108,7 +117,7 @@ private struct LibraryRowContent: View {
                     .font(.headline)
                     .foregroundStyle(Color.duskTextPrimary)
 
-                Text(library.type.capitalized)
+                Text(libraryTypeLabel)
                     .font(.subheadline)
                     .foregroundStyle(Color.duskTextSecondary)
             }
@@ -123,6 +132,10 @@ private struct LibraryRowContent: View {
         .background(Color.duskSurface)
         .clipShape(RoundedRectangle(cornerRadius: 28))
         .duskTVOSFocusEffectShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+    }
+
+    private var libraryTypeLabel: String {
+        library.libraryType?.tabTitle ?? library.type.capitalized
     }
 
     private func libraryIconPlaceholder(_ iconName: String) -> some View {

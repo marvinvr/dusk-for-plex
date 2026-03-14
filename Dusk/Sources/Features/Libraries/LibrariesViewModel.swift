@@ -13,12 +13,26 @@ final class LibrariesViewModel {
         self.plexService = plexService
     }
 
-    func loadLibraries() async {
-        guard libraries.isEmpty else { return }
+    var availableLibraryTypes: [PlexLibraryType] {
+        PlexLibraryType.allCases.filter { hasLibraries(for: $0) }
+    }
+
+    func libraries(for type: PlexLibraryType) -> [PlexLibrary] {
+        libraries.filter { $0.libraryType == type }
+    }
+
+    func hasLibraries(for type: PlexLibraryType) -> Bool {
+        libraries.contains { $0.libraryType == type }
+    }
+
+    func loadLibraries(force: Bool = false) async {
+        guard !isLoading else { return }
+        guard force || libraries.isEmpty else { return }
+
         isLoading = true
         error = nil
         do {
-            libraries = try await plexService.getLibraries().filter { isVisibleLibraryType($0.type) }
+            libraries = try await plexService.getLibraries().filter { $0.libraryType != nil }
         } catch {
             self.error = error.localizedDescription
         }
@@ -26,13 +40,7 @@ final class LibrariesViewModel {
     }
 
     func iconName(for library: PlexLibrary) -> String {
-        switch library.type {
-        case "movie": return "film"
-        case "show": return "tv"
-        case "artist": return "music.note"
-        case "photo": return "photo"
-        default: return "folder"
-        }
+        library.libraryType?.systemImage ?? "folder"
     }
 
     func artURL(for library: PlexLibrary, width: Int, height: Int) -> URL? {
@@ -41,14 +49,5 @@ final class LibrariesViewModel {
             width: width,
             height: height
         )
-    }
-
-    private func isVisibleLibraryType(_ type: String) -> Bool {
-        switch type {
-        case "movie", "show":
-            return true
-        default:
-            return false
-        }
     }
 }

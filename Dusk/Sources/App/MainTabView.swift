@@ -49,16 +49,19 @@ extension View {
 
 /// The main tab shell shown after authentication and server connection.
 struct MainTabView: View {
+    @Environment(PlexService.self) private var plexService
     @Environment(PlaybackCoordinator.self) private var playback
     @State private var selectedTab: Tab = .home
     @State private var homePath = NavigationPath()
-    @State private var librariesPath = NavigationPath()
+    @State private var moviesPath = NavigationPath()
+    @State private var showsPath = NavigationPath()
     @State private var searchPath = NavigationPath()
     @State private var settingsPath = NavigationPath()
+    @State private var librariesViewModel: LibrariesViewModel?
 
-    private enum Tab: Hashable, CaseIterable, Identifiable {
+    private enum Tab: Hashable, Identifiable {
         case home
-        case libraries
+        case library(PlexLibraryType)
         case search
         case settings
 
@@ -68,8 +71,8 @@ struct MainTabView: View {
             switch self {
             case .home:
                 "Home"
-            case .libraries:
-                "Libraries"
+            case .library(let libraryType):
+                libraryType.tabTitle
             case .search:
                 "Search"
             case .settings:
@@ -81,8 +84,8 @@ struct MainTabView: View {
             switch self {
             case .home:
                 "house.fill"
-            case .libraries:
-                "rectangle.stack.fill"
+            case .library(let libraryType):
+                libraryType.systemImage
             case .search:
                 "magnifyingglass"
             case .settings:
@@ -95,20 +98,31 @@ struct MainTabView: View {
         @Bindable var bindablePlayback = playback
 
         tabView
-        .fullScreenCover(isPresented: $bindablePlayback.showPlayer, onDismiss: {
-            playback.onPlayerDismissed()
-        }) {
-            if let engine = playback.engine,
-               let playbackSource = playback.playbackSource {
-                PlayerView(
-                    engine: engine,
-                    playbackSource: playbackSource,
-                    mediaDetails: playback.activeItemDetails,
-                    debugInfo: playback.debugInfo
-                )
-                .id(playback.playerPresentationID)
+            .task {
+                if librariesViewModel == nil {
+                    librariesViewModel = LibrariesViewModel(plexService: plexService)
+                }
+                await librariesViewModel?.loadLibraries()
             }
-        }
+            .onChange(of: availableTabs) { _, newTabs in
+                if !newTabs.contains(selectedTab) {
+                    selectedTab = .home
+                }
+            }
+            .fullScreenCover(isPresented: $bindablePlayback.showPlayer, onDismiss: {
+                playback.onPlayerDismissed()
+            }) {
+                if let engine = playback.engine,
+                   let playbackSource = playback.playbackSource {
+                    PlayerView(
+                        engine: engine,
+                        playbackSource: playbackSource,
+                        mediaDetails: playback.activeItemDetails,
+                        debugInfo: playback.debugInfo
+                    )
+                    .id(playback.playerPresentationID)
+                }
+            }
     }
 
     private var tabSelection: Binding<Tab> {
@@ -122,30 +136,21 @@ struct MainTabView: View {
 
     private var tabView: some View {
         TabView(selection: tabSelection) {
-            tabRootView(for: .home)
-                .tag(Tab.home)
-                .tabItem {
-                    Label(Tab.home.title, systemImage: Tab.home.systemImage)
-                }
-
-            tabRootView(for: .libraries)
-                .tag(Tab.libraries)
-                .tabItem {
-                    Label(Tab.libraries.title, systemImage: Tab.libraries.systemImage)
-                }
-
-            tabRootView(for: .search)
-                .tag(Tab.search)
-                .tabItem {
-                    Label(Tab.search.title, systemImage: Tab.search.systemImage)
-                }
-
-            tabRootView(for: .settings)
-                .tag(Tab.settings)
-                .tabItem {
-                    Label(Tab.settings.title, systemImage: Tab.settings.systemImage)
-                }
+            ForEach(availableTabs) { tab in
+                tabRootView(for: tab)
+                    .tag(tab)
+                    .tabItem {
+                        Label(tab.title, systemImage: tab.systemImage)
+                    }
+            }
         }
+    }
+
+    private var availableTabs: [Tab] {
+        var tabs: [Tab] = [.home]
+        tabs += librariesViewModel?.availableLibraryTypes.map(Tab.library) ?? []
+        tabs += [.search, .settings]
+        return tabs
     }
 
     @ViewBuilder
@@ -153,8 +158,21 @@ struct MainTabView: View {
         switch tab {
         case .home:
             HomeView(path: $homePath)
-        case .libraries:
-            LibrariesView(path: $librariesPath)
+        case .library(let libraryType):
+            if let librariesViewModel {
+                LibrariesView(
+                    libraryType: libraryType,
+                    viewModel: librariesViewModel,
+                    path: binding(for: libraryType)
+                )
+            } else {
+                NavigationStack(path: binding(for: libraryType)) {
+                    ZStack {
+                        Color.duskBackground.ignoresSafeArea()
+                        FeatureLoadingView()
+                    }
+                }
+            }
         case .search:
             SearchView(path: $searchPath)
         case .settings:
@@ -183,8 +201,10 @@ struct MainTabView: View {
         switch tab {
         case .home:
             homePath
-        case .libraries:
-            librariesPath
+        case .library(.movie):
+            moviesPath
+        case .library(.show):
+            showsPath
         case .search:
             searchPath
         case .settings:
@@ -196,12 +216,23 @@ struct MainTabView: View {
         switch tab {
         case .home:
             homePath = path
-        case .libraries:
-            librariesPath = path
+        case .library(.movie):
+            moviesPath = path
+        case .library(.show):
+            showsPath = path
         case .search:
             searchPath = path
         case .settings:
             settingsPath = path
+        }
+    }
+
+    private func binding(for libraryType: PlexLibraryType) -> Binding<NavigationPath> {
+        switch libraryType {
+        case .movie:
+            $moviesPath
+        case .show:
+            $showsPath
         }
     }
 }

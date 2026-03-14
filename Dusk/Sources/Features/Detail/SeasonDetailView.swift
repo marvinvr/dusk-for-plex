@@ -144,6 +144,7 @@ struct SeasonDetailView: View {
             let artworkWidth = min(max(contentWidth * 0.48, 170), 320)
             let imageWidth = Int(artworkWidth.rounded(.up))
             let imageHeight = Int((artworkWidth / (16.0 / 9.0)).rounded(.up))
+            let showsInlineSummary = usesInlineEpisodeSummaryLayout && contentWidth >= 700
 
             VStack(alignment: .leading, spacing: 16) {
                 Text("Episodes")
@@ -152,27 +153,35 @@ struct SeasonDetailView: View {
 
                 LazyVStack(spacing: 20) {
                     ForEach(viewModel.episodes) { episode in
-                        NavigationLink(value: AppNavigationRoute.media(type: .episode, ratingKey: episode.ratingKey)) {
-                            SeasonEpisodeRow(
-                                episode: episode,
-                                imageURL: viewModel.episodeImageURL(episode, width: imageWidth, height: imageHeight),
-                                label: viewModel.episodeLabel(episode),
-                                subtitle: viewModel.episodeSubtitle(episode),
-                                progress: viewModel.progress(for: episode),
-                                artworkWidth: artworkWidth
-                            )
-                            .id(episode.ratingKey)
-                            .contextMenu {
-                                episodeContextMenu(episode)
+                        SeasonEpisodeRow(
+                            episode: episode,
+                            destination: AppNavigationRoute.media(type: .episode, ratingKey: episode.ratingKey),
+                            imageURL: viewModel.episodeImageURL(episode, width: imageWidth, height: imageHeight),
+                            label: viewModel.episodeLabel(episode),
+                            subtitle: viewModel.episodeSubtitle(episode),
+                            progress: viewModel.progress(for: episode),
+                            artworkWidth: artworkWidth,
+                            showsInlineSummary: showsInlineSummary,
+                            onPlay: {
+                                Task { await playback.play(ratingKey: episode.ratingKey) }
                             }
+                        )
+                        .id(episode.ratingKey)
+                        .contextMenu {
+                            episodeContextMenu(episode)
                         }
-                        .buttonStyle(.plain)
-                        .duskSuppressTVOSButtonChrome()
-                        .duskTVOSFocusEffectShape(Rectangle())
                     }
                 }
             }
         }
+    }
+
+    private var usesInlineEpisodeSummaryLayout: Bool {
+        #if os(iOS)
+        UIDevice.current.userInterfaceIdiom == .pad
+        #else
+        false
+        #endif
     }
 
     @ViewBuilder
@@ -225,114 +234,111 @@ struct SeasonDetailView: View {
 
 private struct SeasonEpisodeRow: View {
     let episode: PlexEpisode
+    let destination: AppNavigationRoute
     let imageURL: URL?
     let label: String?
     let subtitle: String?
     let progress: Double?
     let artworkWidth: CGFloat
+    let showsInlineSummary: Bool
+    let onPlay: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .top, spacing: 18) {
-                artwork
+                Button(action: onPlay) {
+                    artwork
+                }
+                .buttonStyle(.plain)
+                .duskSuppressTVOSButtonChrome()
+                .duskTVOSFocusEffectShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .accessibilityLabel("Play \(episode.title)")
 
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        if let label, !label.isEmpty {
-                            Text(label)
-                                .font(.caption.weight(.semibold))
+                episodeLink {
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            if let label, !label.isEmpty {
+                                Text(label)
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(Color.duskTextSecondary)
+                            }
+
+                            if episode.isWatched {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(Color.duskAccent)
+                            }
+                        }
+
+                        Text(episode.title)
+                            .font(.headline)
+                            .foregroundStyle(Color.duskTextPrimary)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        if let subtitle, !subtitle.isEmpty {
+                            Text(subtitle)
+                                .font(.caption)
                                 .foregroundStyle(Color.duskTextSecondary)
                         }
 
-                        if episode.isWatched {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.caption)
-                                .foregroundStyle(Color.duskAccent)
+                        if showsInlineSummary {
+                            summaryText(lineLimit: 3)
                         }
                     }
-
-                    Text(episode.title)
-                        .font(.headline)
-                        .foregroundStyle(Color.duskTextPrimary)
-                        .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    if let subtitle, !subtitle.isEmpty {
-                        Text(subtitle)
-                            .font(.caption)
-                            .foregroundStyle(Color.duskTextSecondary)
-                    }
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
 
-            if let summary = episode.summary, !summary.isEmpty {
-                Text(summary)
-                    .font(.subheadline)
-                    .foregroundStyle(Color.duskTextSecondary)
-                    .lineSpacing(4)
-                    .lineLimit(2)
-                    .truncationMode(.tail)
-                    .fixedSize(horizontal: false, vertical: true)
+            if !showsInlineSummary && hasSummary {
+                episodeLink {
+                    summaryText(lineLimit: 2)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
 
             Rectangle()
                 .fill(Color.white.opacity(0.08))
                 .frame(height: 1)
         }
-        .contentShape(Rectangle())
+    }
+
+    private func episodeLink<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        NavigationLink(value: destination) {
+            content()
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .duskSuppressTVOSButtonChrome()
+        .duskTVOSFocusEffectShape(Rectangle())
+    }
+
+    @ViewBuilder
+    private func summaryText(lineLimit: Int) -> some View {
+        if let summary = episode.summary, !summary.isEmpty {
+            Text(summary)
+                .font(.subheadline)
+                .foregroundStyle(Color.duskTextSecondary)
+                .lineSpacing(4)
+                .lineLimit(lineLimit)
+                .truncationMode(.tail)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var hasSummary: Bool {
+        episode.summary?.isEmpty == false
     }
 
     @ViewBuilder
     private var artwork: some View {
-        ZStack(alignment: .bottomLeading) {
-            if let imageURL {
-                AsyncImage(url: imageURL) { phase in
-                    switch phase {
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .aspectRatio(16.0 / 9.0, contentMode: .fill)
-                    default:
-                        Color.duskBackground
-                            .aspectRatio(16.0 / 9.0, contentMode: .fill)
-                    }
-                }
-            } else {
-                Color.duskBackground
-                    .aspectRatio(16.0 / 9.0, contentMode: .fill)
-            }
-
-            Image(systemName: "play.fill")
-                .font(.system(size: artworkWidth * 0.16, weight: .semibold))
-                .foregroundStyle(Color.white.opacity(0.92))
-                .padding(artworkWidth * 0.09)
-                .background(.ultraThinMaterial, in: Circle())
-                .overlay(
-                    Circle()
-                        .strokeBorder(Color.white.opacity(0.10), lineWidth: 1)
-                )
-                .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-
-            if let progress {
-                GeometryReader { geometry in
-                    VStack {
-                        Spacer()
-                        ZStack(alignment: .leading) {
-                            Rectangle()
-                                .fill(Color.white.opacity(0.2))
-                                .frame(height: 3)
-
-                            Rectangle()
-                                .fill(Color.duskAccent)
-                                .frame(width: geometry.size.width * progress, height: 3)
-                        }
-                    }
-                }
-            }
-        }
-        .frame(width: artworkWidth)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        PosterArtwork(
+            imageURL: imageURL,
+            progress: progress,
+            width: artworkWidth,
+            imageAspectRatio: 16.0 / 9.0,
+            showsPlayOverlay: true
+        )
     }
 }

@@ -5,9 +5,13 @@ struct PosterArtwork: View {
     var progress: Double?
     var width: CGFloat = 130
     var imageAspectRatio: CGFloat = 2.0 / 3.0
+    var showsPlayOverlay: Bool = false
+
+    private let playOverlaySymbolSize: CGFloat = 25
+    private let playOverlayPadding: CGFloat = 14
 
     var body: some View {
-        ZStack(alignment: .bottom) {
+        ZStack {
             AsyncImage(url: imageURL) { phase in
                 switch phase {
                 case .success(let image):
@@ -23,6 +27,19 @@ struct PosterArtwork: View {
             .frame(width: width, height: imageHeight)
             .clipped()
             .clipShape(RoundedRectangle(cornerRadius: 16))
+
+            if showsPlayOverlay {
+                Image(systemName: "play.fill")
+                    .font(.system(size: playOverlaySymbolSize, weight: .semibold))
+                    .foregroundStyle(Color.white.opacity(0.92))
+                    .padding(playOverlayPadding)
+                    .background(.ultraThinMaterial, in: Circle())
+                    .overlay(
+                        Circle()
+                            .strokeBorder(Color.white.opacity(0.10), lineWidth: 1)
+                    )
+                    .shadow(color: .black.opacity(0.25), radius: 10, y: 4)
+            }
 
             if let progress, progress > 0 {
                 GeometryReader { geo in
@@ -41,6 +58,7 @@ struct PosterArtwork: View {
                     }
                 }
                 .frame(width: width, height: imageHeight)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
             }
         }
     }
@@ -105,6 +123,7 @@ struct PosterCard: View {
     var progress: Double?
     var width: CGFloat = 130
     var imageAspectRatio: CGFloat = 2.0 / 3.0
+    var showsPlayOverlay: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -112,7 +131,8 @@ struct PosterCard: View {
                 imageURL: imageURL,
                 progress: progress,
                 width: width,
-                imageAspectRatio: imageAspectRatio
+                imageAspectRatio: imageAspectRatio,
+                showsPlayOverlay: showsPlayOverlay
             )
 
             PosterCardText(
