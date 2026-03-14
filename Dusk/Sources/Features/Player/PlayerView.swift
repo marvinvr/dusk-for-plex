@@ -4,22 +4,24 @@ private struct PlayerSeekFeedbackOverlayView: View {
     let presentation: PlayerSeekFeedbackPresentation
 
     private let badgeSize: CGFloat = 64
-    private let centerGap: CGFloat = 128
 
     var body: some View {
-        ZStack {
-            if presentation.direction == .backward {
-                feedbackBadge
-                    .offset(x: -centerGap)
-            }
+        GeometryReader { geometry in
+            let quarterOffset = geometry.size.width / 4
 
-            if presentation.direction == .forward {
-                feedbackBadge
-                    .offset(x: centerGap)
+            ZStack {
+                if presentation.direction == .backward {
+                    feedbackBadge
+                        .offset(x: -quarterOffset, y: -4)
+                }
+
+                if presentation.direction == .forward {
+                    feedbackBadge
+                        .offset(x: quarterOffset, y: -6)
+                }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .ignoresSafeArea()
         .allowsHitTesting(false)
     }
 
