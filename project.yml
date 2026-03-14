@@ -7,6 +7,8 @@ options:
   xcodeVersion: "16.0"
   generateEmptyDirectories: true
   groupSortPosition: top
+  fileTypes:
+    icon: folder.iconcomposer.icon
 
 settings:
   base:
@@ -31,7 +33,7 @@ targets:
         GENERATE_INFOPLIST_FILE: false
         INFOPLIST_FILE: Dusk/Support/Info-iOS.plist
         DEVELOPMENT_TEAM: ""
-        ASSETCATALOG_COMPILER_APPICON_NAME: AppIconPrimary
+        ASSETCATALOG_COMPILER_APPICON_NAME: DuskIcon
         ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME: ""
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         FRAMEWORK_SEARCH_PATHS: "$(inherited) $(PROJECT_DIR)/Frameworks"
@@ -49,6 +51,7 @@ targets:
       - path: Dusk/Resources
         buildPhase: resources
         excludes:
+          - DuskIcon.icon
           - LaunchScreen.storyboard
           - LaunchScreen-tvOS.storyboard
     settings:

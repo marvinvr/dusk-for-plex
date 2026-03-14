@@ -171,6 +171,7 @@
 		E8CE4B0C485E19B1AA45EA30 /* PlexService+Servers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84810287472A5C85EE0B751F /* PlexService+Servers.swift */; };
 		E9968304272BFA8A38216038 /* MediaDetailDestinationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 390DED2ED4295016D527E610 /* MediaDetailDestinationView.swift */; };
 		EA5DDD3FA0B01249F467E9C8 /* PlexService+Library.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1EA6CCEA23C3304F38B78D7 /* PlexService+Library.swift */; };
+		EA61D0382F655397003F0451 /* DuskIcon.icon in Resources */ = {isa = PBXBuildFile; fileRef = EA61D0372F655397003F0451 /* DuskIcon.icon */; };
 		EAEB3E862EE90F8C106EB566 /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = F693F697A72ECEE11C60FDD7 /* HomeViewModel.swift */; };
 		EC08032B694893022D23D11E /* CircularProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D8D699F78FA6910B7E4A587 /* CircularProgressView.swift */; };
 		ED238AE86F7DF69897977475 /* String+NilIfEmpty.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4238A148972887A3594A4DB /* String+NilIfEmpty.swift */; };
@@ -283,6 +284,7 @@
 		E247046B56BBFDBF4FF7FC91 /* PlaybackState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaybackState.swift; sourceTree = "<group>"; };
 		E633961171327398791E552E /* PlexService+Playback.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PlexService+Playback.swift"; sourceTree = "<group>"; };
 		E67CCF87D1380B6C91B5B282 /* HomeHubItemsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeHubItemsViewModel.swift; sourceTree = "<group>"; };
+		EA61D0372F655397003F0451 /* DuskIcon.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = DuskIcon.icon; sourceTree = "<group>"; };
 		EC07DAEED42C6DF6C3F87FA7 /* PlexServiceError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlexServiceError.swift; sourceTree = "<group>"; };
 		EC749FF6253BF830C0C6B2E1 /* SeasonDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeasonDetailView.swift; sourceTree = "<group>"; };
 		EFA5D54D8E9EED23579806F1 /* PlexPin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlexPin.swift; sourceTree = "<group>"; };
@@ -519,6 +521,7 @@
 			children = (
 				28D81792E63C82C8F090AFB1 /* Assets.xcassets */,
 				3C89C8715BE06C6898AC032B /* LaunchScreen.storyboard */,
+				EA61D0372F655397003F0451 /* DuskIcon.icon */,
 			);
 			name = Resources;
 			path = Dusk/Resources;
@@ -635,6 +638,7 @@
 			files = (
 				39A8E92988FD99DDC133C744 /* Assets.xcassets in Resources */,
 				B1C4629DD7A801EA83F3E2A2 /* LaunchScreen.storyboard in Resources */,
+				EA61D0382F655397003F0451 /* DuskIcon.icon in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -835,7 +839,7 @@
 		0303D2C48AD5C36DF7C19CAD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIconPrimary;
+				ASSETCATALOG_COMPILER_APPICON_NAME = DuskIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = "";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
@@ -847,7 +851,6 @@
 				);
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Dusk/Support/Info-iOS.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -921,7 +924,7 @@
 		8B2B7865EBA894C76370E870 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIconPrimary;
+				ASSETCATALOG_COMPILER_APPICON_NAME = DuskIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_LAUNCHIMAGE_NAME = "";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
@@ -933,7 +936,6 @@
 				);
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "Dusk/Support/Info-iOS.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
