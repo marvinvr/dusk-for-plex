@@ -144,17 +144,12 @@ final class VLCKitEngine: NSObject, PlaybackEngine {
         pendingSeekTarget = clampedPosition
         pendingSeekStartedAt = Date()
         currentTime = clampedPosition
-        let shouldResumePlayback = mediaPlayer.isPlaying
 
-        if shouldResumePlayback && mediaPlayer.canPause {
-            mediaPlayer.pause()
-        }
-
+        // Seek without pausing — pausing first creates a race between
+        // VLCKit's asynchronous state callbacks and the timed resume,
+        // which can leave the player stuck in a paused state.
         applySeek(to: clampedPosition)
-        scheduleSeekVerification(
-            target: clampedPosition,
-            resumePlayback: shouldResumePlayback
-        )
+        scheduleSeekVerification(target: clampedPosition)
         syncPictureInPictureState()
     }
 
@@ -287,7 +282,7 @@ final class VLCKitEngine: NSObject, PlaybackEngine {
         mediaPlayer.time = VLCTime(int: Int32(clamping: targetMs))
     }
 
-    private func scheduleSeekVerification(target: TimeInterval, resumePlayback: Bool) {
+    private func scheduleSeekVerification(target: TimeInterval) {
         seekVerificationTask?.cancel()
         seekVerificationTask = Task { @MainActor [weak self] in
             do {
@@ -300,10 +295,6 @@ final class VLCKitEngine: NSObject, PlaybackEngine {
 
             if self.shouldRetrySeek(toward: target) {
                 self.applySeek(to: target)
-            }
-
-            if resumePlayback {
-                self.mediaPlayer.play()
             }
 
             do {

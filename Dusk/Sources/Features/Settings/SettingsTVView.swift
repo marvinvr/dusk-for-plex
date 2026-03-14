@@ -50,6 +50,14 @@ struct SettingsTVView: View {
                 }
 
                 TVSettingsSection(title: "Playback Behavior", footer: SettingsSupport.playbackBehaviorFooterText) {
+                    TVSettingsToggleRow(title: "Auto-Skip Intros", isOn: $preferences.autoSkipIntro)
+
+                    tvRowDivider
+
+                    TVSettingsToggleRow(title: "Auto-Skip Credits", isOn: $preferences.autoSkipCredits)
+
+                    tvRowDivider
+
                     TVSettingsToggleRow(title: "Continuous Play", isOn: $preferences.continuousPlayEnabled)
 
                     if preferences.continuousPlayEnabled {

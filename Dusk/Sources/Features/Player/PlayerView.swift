@@ -165,6 +165,18 @@ private struct PlayerSessionView: View {
                 preferences: preferences,
                 part: debugInfo?.part ?? mediaDetails?.media.first?.parts.first
             )
+            viewModel.autoSkipHandler = { marker in
+                if marker.isCredits {
+                    Task { @MainActor in
+                        let didPresentUpNext = await playback.skipCreditsToUpNextIfPossible()
+                        if !didPresentUpNext {
+                            viewModel.skipActiveMarker()
+                        }
+                    }
+                } else {
+                    viewModel.skipActiveMarker()
+                }
+            }
             viewModel.startPlaybackIfNeeded(source: playbackSource)
         }
         .onDisappear { viewModel.cleanup() }
@@ -251,6 +263,7 @@ private struct PlayerSessionView: View {
                 HStack {
                     Spacer()
                     Button {
+                        viewModel.cancelAutoSkipCountdown()
                         if marker.isCredits {
                             Task { @MainActor in
                                 let didPresentUpNext = await playback.skipCreditsToUpNextIfPossible()
@@ -272,7 +285,19 @@ private struct PlayerSessionView: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 18)
                         .padding(.vertical, 13)
-                        .background(.ultraThinMaterial, in: Capsule())
+                        .background {
+                            Capsule().fill(.ultraThinMaterial)
+                        }
+                        .overlay(alignment: .leading) {
+                            if let progress = viewModel.autoSkipCountdownProgress {
+                                GeometryReader { buttonGeometry in
+                                    Rectangle()
+                                        .fill(.white.opacity(0.18))
+                                        .frame(width: buttonGeometry.size.width * progress)
+                                }
+                                .clipShape(Capsule())
+                            }
+                        }
                         .overlay {
                             Capsule()
                                 .strokeBorder(.white.opacity(0.14), lineWidth: 1)
@@ -290,9 +315,7 @@ private struct PlayerSessionView: View {
         .ignoresSafeArea()
     }
 
-    private var skipMarkerBottomInset: CGFloat {
-        viewModel.showControls ? 124 : 36
-    }
+    private var skipMarkerBottomInset: CGFloat { 124 }
 
     private func errorOverlay(_ error: PlaybackError) -> some View {
         VStack(spacing: 16) {

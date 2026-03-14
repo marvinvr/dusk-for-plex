@@ -22,6 +22,8 @@ final class UserPreferences {
         static let playerDoubleTapSeekEnabled = "playerDoubleTapSeekEnabled"
         static let playerDoubleTapForwardInterval = "playerDoubleTapForwardInterval"
         static let playerDoubleTapBackwardInterval = "playerDoubleTapBackwardInterval"
+        static let autoSkipIntro = "autoSkipIntro"
+        static let autoSkipCredits = "autoSkipCredits"
         static let forceAVPlayer = "forceAVPlayer"
         static let forceVLCKit = "forceVLCKit"
         static let appearanceMode = "appearanceMode"
@@ -66,6 +68,16 @@ final class UserPreferences {
             let storedValue = max(continuousPlayPassoutProtectionEpisodeLimit ?? 0, 0)
             UserDefaults.standard.set(storedValue, forKey: Keys.continuousPlayPassoutProtectionEpisodeLimit)
         }
+    }
+
+    /// Automatically skip intro markers after a brief countdown.
+    var autoSkipIntro: Bool {
+        didSet { UserDefaults.standard.set(autoSkipIntro, forKey: Keys.autoSkipIntro) }
+    }
+
+    /// Automatically skip credits markers after a brief countdown.
+    var autoSkipCredits: Bool {
+        didSet { UserDefaults.standard.set(autoSkipCredits, forKey: Keys.autoSkipCredits) }
     }
 
     /// Enable left/right double-tap seeking on touch-based platforms.
@@ -140,6 +152,8 @@ final class UserPreferences {
             defaults: defaults,
             fallback: 3
         )
+        let autoSkipIntro = defaults.object(forKey: Keys.autoSkipIntro) as? Bool ?? true
+        let autoSkipCredits = defaults.object(forKey: Keys.autoSkipCredits) as? Bool ?? true
         let playerDoubleTapSeekEnabled = defaults.object(forKey: Keys.playerDoubleTapSeekEnabled) as? Bool ?? true
         let playerDoubleTapForwardInterval = Self.storedSeekInterval(
             forKey: Keys.playerDoubleTapForwardInterval,
@@ -172,6 +186,8 @@ final class UserPreferences {
         self.continuousPlayEnabled = continuousPlayEnabled
         self.continuousPlayCountdown = continuousPlayCountdown
         self.continuousPlayPassoutProtectionEpisodeLimit = continuousPlayPassoutProtectionEpisodeLimit
+        self.autoSkipIntro = autoSkipIntro
+        self.autoSkipCredits = autoSkipCredits
         self.playerDoubleTapSeekEnabled = playerDoubleTapSeekEnabled
         self.playerDoubleTapForwardInterval = playerDoubleTapForwardInterval
         self.playerDoubleTapBackwardInterval = playerDoubleTapBackwardInterval

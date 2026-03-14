@@ -4,6 +4,7 @@ import SwiftUI
 extension PlayerViewModel {
     private static let seekFeedbackDisplayDuration: Duration = .milliseconds(325)
     private static let markerSkipPadding: TimeInterval = 0.5
+    private static let autoSkipCountdownDuration: TimeInterval = 5.0
 
     func startSync() {
         syncTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
@@ -26,6 +27,7 @@ extension PlayerViewModel {
         playbackError = engine.error
         syncTrackLists()
         applyAutomaticTrackSelectionIfNeeded()
+        updateAutoSkipState()
     }
 
     func togglePlayPause() {
@@ -48,6 +50,7 @@ extension PlayerViewModel {
 
     func skipActiveMarker() {
         guard let marker = activeSkipMarker else { return }
+        cancelAutoSkipCountdown()
 
         let targetTime = (TimeInterval(marker.endTimeOffset) / 1000.0) + Self.markerSkipPadding
         seek(to: targetTime, revealControls: true)
@@ -110,6 +113,80 @@ extension PlayerViewModel {
         } else if showControls {
             scheduleHide()
         }
+    }
+
+    // MARK: - Auto-Skip
+
+    private func updateAutoSkipState() {
+        let marker = activeSkipMarker
+
+        guard let marker, !isScrubbing else {
+            if autoSkipCountdownMarkerID != nil {
+                cancelAutoSkipCountdown()
+            }
+            return
+        }
+
+        let shouldAutoSkip = (marker.isIntro && autoSkipIntro) || (marker.isCredits && autoSkipCredits)
+
+        guard shouldAutoSkip else {
+            if autoSkipCountdownMarkerID != nil {
+                cancelAutoSkipCountdown()
+            }
+            return
+        }
+
+        // Already counting down for this marker
+        if autoSkipCountdownMarkerID == marker.id { return }
+
+        startAutoSkipCountdown(for: marker)
+    }
+
+    private func startAutoSkipCountdown(for marker: PlexMarker) {
+        cancelAutoSkipCountdown()
+        autoSkipCountdownMarkerID = marker.id
+        autoSkipCountdownProgress = 0
+
+        autoSkipCountdownTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let duration = Self.autoSkipCountdownDuration
+            let startedAt = Date()
+
+            while true {
+                if Task.isCancelled { return }
+
+                let elapsed = Date().timeIntervalSince(startedAt)
+                let progress = min(max(elapsed / duration, 0), 1)
+                self.autoSkipCountdownProgress = progress
+
+                if progress >= 1 { break }
+
+                do {
+                    try await Task.sleep(for: .milliseconds(50))
+                } catch { return }
+            }
+
+            if Task.isCancelled { return }
+
+            guard let currentMarker = self.activeSkipMarker,
+                  currentMarker.id == self.autoSkipCountdownMarkerID else { return }
+
+            self.autoSkipCountdownMarkerID = nil
+            self.autoSkipCountdownProgress = nil
+
+            if let handler = self.autoSkipHandler {
+                handler(currentMarker)
+            } else {
+                self.skipActiveMarker()
+            }
+        }
+    }
+
+    func cancelAutoSkipCountdown() {
+        autoSkipCountdownTask?.cancel()
+        autoSkipCountdownTask = nil
+        autoSkipCountdownMarkerID = nil
+        autoSkipCountdownProgress = nil
     }
 
     private func showSeekFeedback(for offset: TimeInterval) {

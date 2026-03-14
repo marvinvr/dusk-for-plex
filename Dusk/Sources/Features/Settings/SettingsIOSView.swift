@@ -53,6 +53,14 @@ struct SettingsIOSView: View {
             .listRowBackground(Color.duskSurface)
 
             Section {
+                Toggle("Auto-Skip Intros", isOn: $preferences.autoSkipIntro)
+                    .foregroundStyle(Color.duskTextPrimary)
+                    .tint(Color.duskAccent)
+
+                Toggle("Auto-Skip Credits", isOn: $preferences.autoSkipCredits)
+                    .foregroundStyle(Color.duskTextPrimary)
+                    .tint(Color.duskAccent)
+
                 Toggle("Continuous Play", isOn: $preferences.continuousPlayEnabled)
                     .foregroundStyle(Color.duskTextPrimary)
                     .tint(Color.duskAccent)

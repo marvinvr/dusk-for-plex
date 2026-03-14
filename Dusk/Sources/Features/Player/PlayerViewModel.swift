@@ -41,6 +41,7 @@ final class PlayerViewModel {
     var isScrubbing = false
     var scrubPosition: TimeInterval = 0
     var seekFeedback: PlayerSeekFeedbackPresentation?
+    var autoSkipCountdownProgress: Double?
 
     let engine: any PlaybackEngine
     let engineView: AnyView
@@ -50,12 +51,17 @@ final class PlayerViewModel {
     var preferredSubtitleLanguage: String?
     var preferredAudioLanguage: String?
     var subtitleForcedOnly = false
+    var autoSkipIntro = true
+    var autoSkipCredits = true
+    var autoSkipCountdownMarkerID: Int?
+    var autoSkipHandler: (@MainActor (PlexMarker) -> Void)?
     var hasConfiguredAutomaticTrackSelection = false
     var hasAppliedAutomaticAudioSelection = false
     var hasAppliedAutomaticSubtitleSelection = false
     @ObservationIgnored nonisolated(unsafe) var syncTimer: Timer?
     @ObservationIgnored nonisolated(unsafe) var hideTimer: Timer?
     @ObservationIgnored nonisolated(unsafe) var seekFeedbackTask: Task<Void, Never>?
+    @ObservationIgnored nonisolated(unsafe) var autoSkipCountdownTask: Task<Void, Never>?
 
     init(engine: any PlaybackEngine, markers: [PlexMarker] = []) {
         self.engine = engine
@@ -69,15 +75,18 @@ final class PlayerViewModel {
         syncTimer?.invalidate()
         hideTimer?.invalidate()
         seekFeedbackTask?.cancel()
+        autoSkipCountdownTask?.cancel()
     }
 
     func cleanup() {
         syncTimer?.invalidate()
         hideTimer?.invalidate()
         seekFeedbackTask?.cancel()
+        autoSkipCountdownTask?.cancel()
         syncTimer = nil
         hideTimer = nil
         seekFeedbackTask = nil
+        autoSkipCountdownTask = nil
         // Pause (not stop) so the coordinator can read final position
         // for timeline reporting before tearing down the engine.
         engine.pause()
@@ -91,6 +100,8 @@ final class PlayerViewModel {
         preferredSubtitleLanguage = Self.normalizedLanguageCode(preferences.defaultSubtitleLanguage)
         preferredAudioLanguage = Self.normalizedLanguageCode(preferences.defaultAudioLanguage)
         subtitleForcedOnly = preferences.subtitleForcedOnly
+        autoSkipIntro = preferences.autoSkipIntro
+        autoSkipCredits = preferences.autoSkipCredits
         hasConfiguredAutomaticTrackSelection = true
         hasAppliedAutomaticAudioSelection = false
         hasAppliedAutomaticSubtitleSelection = false
