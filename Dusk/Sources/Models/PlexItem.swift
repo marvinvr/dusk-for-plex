@@ -78,7 +78,10 @@ struct PlexItem: Codable, Sendable, Identifiable {
 
 extension PlexItem: Hashable {
     static func == (lhs: PlexItem, rhs: PlexItem) -> Bool {
-        lhs.ratingKey == rhs.ratingKey
+        lhs.ratingKey == rhs.ratingKey &&
+        lhs.viewOffset == rhs.viewOffset &&
+        lhs.viewCount == rhs.viewCount &&
+        lhs.duration == rhs.duration
     }
 
     func hash(into hasher: inout Hasher) {

@@ -11,11 +11,9 @@ final class HomeViewModel {
     private(set) var error: String?
 
     private let plexService: PlexService
-    private let playbackCoordinator: PlaybackCoordinator
 
-    init(plexService: PlexService, playbackCoordinator: PlaybackCoordinator) {
+    init(plexService: PlexService) {
         self.plexService = plexService
-        self.playbackCoordinator = playbackCoordinator
     }
 
     func load(maxRecentlyAddedItems: Int? = nil) async {
@@ -78,12 +76,8 @@ final class HomeViewModel {
     }
 
     /// Progress fraction (0–1) for partially watched items. Nil if unwatched.
-    /// Returns live progress from the playback engine if this item is currently playing.
     func progress(for item: PlexItem) -> Double? {
-        if let live = playbackCoordinator.liveProgress(for: item.ratingKey) {
-            return live
-        }
-        return MediaTextFormatter.progress(durationMs: item.duration, offsetMs: item.viewOffset)
+        MediaTextFormatter.progress(durationMs: item.duration, offsetMs: item.viewOffset)
     }
 
     /// Display title for continue watching items.

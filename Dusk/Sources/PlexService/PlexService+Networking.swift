@@ -25,6 +25,7 @@ extension PlexService {
 
         var request = URLRequest(url: url)
         request.httpMethod = method
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         applyHeaders(to: &request, token: authToken)
 
         if let formBody {
@@ -53,6 +54,7 @@ extension PlexService {
 
         var request = URLRequest(url: url)
         request.httpMethod = method
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         applyHeaders(to: &request, token: preferredServerToken)
 
         return try await executeRequest(request)

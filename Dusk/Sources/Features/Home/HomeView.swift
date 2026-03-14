@@ -35,6 +35,15 @@ struct HomeView: View {
                 }
                 await viewModel?.load(maxRecentlyAddedItems: recentlyAddedInlineItemLimit)
             }
+            .onAppear {
+                guard viewModel != nil else { return }
+                Task { await viewModel?.load(maxRecentlyAddedItems: recentlyAddedInlineItemLimit) }
+            }
+            .onChange(of: playback.showPlayer) { _, isShowing in
+                if !isShowing {
+                    Task { await viewModel?.load(maxRecentlyAddedItems: recentlyAddedInlineItemLimit) }
+                }
+            }
             .refreshable {
                 await viewModel?.load(maxRecentlyAddedItems: recentlyAddedInlineItemLimit)
             }
