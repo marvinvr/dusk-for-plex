@@ -22,7 +22,9 @@ A native Swift/SwiftUI Plex client for Apple platforms.
 - [ ] Select which version to play
 - [x] Picture in Picture
 - [x] Passout Protection (Are you still watching?)
-- [ ] macOS App
+- [x] macOS App
+- [ ] Proper Recommendations Section in TV Show and Movies Views
+- [ ] More elaborate Continue Watching section on the Home Page
 - [ ] Transcoding Support
 - [ ] Offline playback (Downloads)
 - [ ] Plex Home Integration

@@ -36,7 +36,7 @@ final class UserPreferences {
 
     /// ISO 639-1 language code, or nil for "None" (no default subtitle).
     var defaultSubtitleLanguage: String? {
-        didSet { UserDefaults.standard.set(defaultSubtitleLanguage, forKey: Keys.defaultSubtitleLanguage) }
+        didSet { UserDefaults.standard.set(defaultSubtitleLanguage ?? "", forKey: Keys.defaultSubtitleLanguage) }
     }
 
     /// When enabled, automatic subtitle selection only picks forced tracks.
@@ -126,8 +126,8 @@ final class UserPreferences {
             maxResolution = .auto
         }
 
-        let defaultSubtitleLanguage = defaults.string(forKey: Keys.defaultSubtitleLanguage)
-        let subtitleForcedOnly = defaults.bool(forKey: Keys.subtitleForcedOnly)
+        let defaultSubtitleLanguage = Self.storedSubtitleLanguage(defaults: defaults)
+        let subtitleForcedOnly = defaults.object(forKey: Keys.subtitleForcedOnly) as? Bool ?? true
         let defaultAudioLanguage = defaults.string(forKey: Keys.defaultAudioLanguage) ?? "en"
         let continuousPlayEnabled = defaults.object(forKey: Keys.continuousPlayEnabled) as? Bool ?? true
         let continuousPlayCountdown = Self.storedContinuousPlayCountdown(
@@ -207,6 +207,42 @@ final class UserPreferences {
         guard defaults.object(forKey: key) != nil else { return fallback }
         let value = defaults.integer(forKey: key)
         return value > 0 ? value : nil
+    }
+
+    private static func storedSubtitleLanguage(defaults: UserDefaults) -> String? {
+        guard defaults.object(forKey: Keys.defaultSubtitleLanguage) != nil else {
+            return systemPreferredSubtitleLanguageCode
+        }
+
+        guard let storedValue = defaults.string(forKey: Keys.defaultSubtitleLanguage) else {
+            return nil
+        }
+
+        return storedValue.isEmpty ? nil : normalizedLanguageCode(from: storedValue)
+    }
+
+    nonisolated static var systemPreferredSubtitleLanguageCode: String? {
+        Locale.preferredLanguages.lazy
+            .compactMap(normalizedLanguageCode(from:))
+            .first
+    }
+
+    nonisolated private static func normalizedLanguageCode(from identifier: String) -> String? {
+        let trimmedIdentifier = identifier.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedIdentifier.isEmpty else { return nil }
+
+        let normalizedIdentifier = trimmedIdentifier.replacingOccurrences(of: "-", with: "_")
+        let components = Locale.components(fromIdentifier: normalizedIdentifier)
+
+        if let languageCode = components[NSLocale.Key.languageCode.rawValue], !languageCode.isEmpty {
+            return languageCode.lowercased()
+        }
+
+        if normalizedIdentifier.range(of: "_") == nil {
+            return normalizedIdentifier.lowercased()
+        }
+
+        return nil
     }
 }
 

@@ -269,6 +269,7 @@ final class AVPlayerEngine: PlaybackEngine {
             kCMTextMarkupAttribute_ForegroundColorARGB as String: [1.0, 1.0, 1.0, 1.0],
             kCMTextMarkupAttribute_CharacterBackgroundColorARGB as String: [0.68, 0.0, 0.0, 0.0],
             kCMTextMarkupAttribute_CharacterEdgeStyle as String: kCMTextMarkupCharacterEdgeStyle_DropShadow,
+            kCMTextMarkupAttribute_RelativeFontSize as String: PlaybackSubtitleStyle.avPlayerRelativeFontSize,
         ]
 
         guard let rule = AVTextStyleRule(textMarkupAttributes: attributes) else {

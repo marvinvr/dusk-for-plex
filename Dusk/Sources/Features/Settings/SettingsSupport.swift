@@ -14,7 +14,14 @@ enum SettingsSupport {
     static let accountFooterText = "Clears the saved Plex session and returns to the sign-in flow."
 
     static var subtitleLanguageOptions: [String] {
-        [""] + CommonLanguage.allCases.map(\.code)
+        var options = [""] + CommonLanguage.allCases.map(\.code)
+
+        if let systemLanguageCode = UserPreferences.systemPreferredSubtitleLanguageCode,
+           !options.contains(systemLanguageCode) {
+            options.insert(systemLanguageCode, at: 1)
+        }
+
+        return options
     }
 
     static var audioLanguageOptions: [String] {
@@ -37,7 +44,11 @@ enum SettingsSupport {
     }
 
     static func languageDisplayName(for code: String) -> String {
-        CommonLanguage(rawValue: code)?.displayName ?? code.uppercased()
+        if let commonLanguage = CommonLanguage(rawValue: code) {
+            return commonLanguage.displayName
+        }
+
+        return Locale.current.localizedString(forLanguageCode: code) ?? code.uppercased()
     }
 
     static func passoutProtectionDisplayName(for episodeLimit: Int?) -> String {

@@ -14,7 +14,7 @@ enum PlaybackEngineFactory {
     private static var warmedAVPlayerEngine: AVPlayerEngine?
     #endif
 
-    #if canImport(VLCKit) || canImport(MobileVLCKit)
+    #if canImport(VLCKit)
     private static var warmedVLCKitEngine: VLCKitEngine?
     #endif
 
@@ -27,7 +27,7 @@ enum PlaybackEngineFactory {
         }
         #endif
 
-        #if canImport(VLCKit) || canImport(MobileVLCKit)
+        #if canImport(VLCKit)
         if warmedVLCKitEngine == nil {
             warmedVLCKitEngine = VLCKitEngine()
         }
@@ -64,7 +64,7 @@ enum PlaybackEngineFactory {
             fatalError("AVPlayer is not available on this platform")
             #endif
         case .vlcKit:
-            #if canImport(VLCKit) || canImport(MobileVLCKit)
+            #if canImport(VLCKit)
             if let warmedVLCKitEngine {
                 self.warmedVLCKitEngine = nil
                 return warmedVLCKitEngine

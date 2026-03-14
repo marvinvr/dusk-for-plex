@@ -170,7 +170,7 @@ struct PlayerControlsOverlay: View {
             return selectedSubtitleTrack.displayTitle
         }
 
-        return viewModel.state == .loading ? "..." : "-"
+        return viewModel.state == .loading ? "..." : "No Subtitles"
     }
 
     private var audioControlTitle: String {

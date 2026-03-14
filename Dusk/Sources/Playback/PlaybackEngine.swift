@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Which concrete engine to use for playback.
 enum PlaybackEngineType: Sendable {
@@ -45,4 +48,27 @@ protocol PlaybackEngine: AnyObject {
 
     /// Returns a platform-specific view that renders the video content.
     func makePlayerView() -> AnyView
+}
+
+enum PlaybackSubtitleStyle {
+    static var avPlayerRelativeFontSize: Int {
+        switch userInterfaceIdiom {
+        case .pad, .mac:
+            return 75
+        default:
+            return 100
+        }
+    }
+
+    static var vlcSubtitleFontScale: Float {
+        Float(avPlayerRelativeFontSize) / 100
+    }
+
+    private static var userInterfaceIdiom: UIUserInterfaceIdiom {
+        #if canImport(UIKit)
+        UIDevice.current.userInterfaceIdiom
+        #else
+        .unspecified
+        #endif
+    }
 }

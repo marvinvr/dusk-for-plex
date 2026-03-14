@@ -121,6 +121,9 @@ struct MainTabView: View {
                         debugInfo: playback.debugInfo
                     )
                     .id(playback.playerPresentationID)
+                    .environment(plexService)
+                    .environment(playback)
+                    .environment(playback.preferences)
                 }
             }
     }

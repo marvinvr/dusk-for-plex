@@ -27,9 +27,8 @@ struct SettingsIOSView: View {
                 .foregroundStyle(Color.duskTextPrimary)
 
                 Picker("Subtitles", selection: subtitleLanguageBinding) {
-                    Text("None").tag("")
-                    ForEach(CommonLanguage.allCases) { language in
-                        Text(language.displayName).tag(language.code)
+                    ForEach(SettingsSupport.subtitleLanguageOptions, id: \.self) { languageCode in
+                        Text(SettingsSupport.subtitleDisplayName(for: languageCode)).tag(languageCode)
                     }
                 }
                 .foregroundStyle(Color.duskTextPrimary)
