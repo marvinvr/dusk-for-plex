@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 @MainActor @Observable
 final class HomeViewModel {
@@ -10,9 +11,11 @@ final class HomeViewModel {
     private(set) var error: String?
 
     private let plexService: PlexService
+    private let playbackCoordinator: PlaybackCoordinator
 
-    init(plexService: PlexService) {
+    init(plexService: PlexService, playbackCoordinator: PlaybackCoordinator) {
         self.plexService = plexService
+        self.playbackCoordinator = playbackCoordinator
     }
 
     func load(maxRecentlyAddedItems: Int? = nil) async {
@@ -20,18 +23,36 @@ final class HomeViewModel {
             self.maxRecentlyAddedItems = maxRecentlyAddedItems
         }
 
-        isLoading = true
-        error = nil
+        let isInitialLoad = hubs.isEmpty && continueWatching.isEmpty
+
+        if isInitialLoad {
+            isLoading = true
+            error = nil
+        }
 
         do {
             async let fetchedHubs = plexService.getHubs()
             async let fetchedOnDeck = plexService.getContinueWatching()
 
             let baseHubs = try await fetchedHubs.filter { !shouldHideHomeHub($0) }
-            hubs = try await expandedRecentlyAddedHubs(from: baseHubs)
-            continueWatching = try await fetchedOnDeck.filter { !shouldHideHomeItem($0) }
+            let newHubs = try await expandedRecentlyAddedHubs(from: baseHubs)
+            let newContinueWatching = try await fetchedOnDeck.filter { !shouldHideHomeItem($0) }
+
+            if isInitialLoad {
+                hubs = newHubs
+                continueWatching = newContinueWatching
+            } else {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    hubs = newHubs
+                    continueWatching = newContinueWatching
+                }
+            }
+            error = nil
         } catch {
-            self.error = error.localizedDescription
+            // On refresh, only show error if we have no existing data
+            if isInitialLoad {
+                self.error = error.localizedDescription
+            }
         }
 
         isLoading = false
@@ -57,8 +78,12 @@ final class HomeViewModel {
     }
 
     /// Progress fraction (0–1) for partially watched items. Nil if unwatched.
+    /// Returns live progress from the playback engine if this item is currently playing.
     func progress(for item: PlexItem) -> Double? {
-        MediaTextFormatter.progress(durationMs: item.duration, offsetMs: item.viewOffset)
+        if let live = playbackCoordinator.liveProgress(for: item.ratingKey) {
+            return live
+        }
+        return MediaTextFormatter.progress(durationMs: item.duration, offsetMs: item.viewOffset)
     }
 
     /// Display title for continue watching items.
