@@ -33,7 +33,7 @@
   --radius-card: 28px;
   --radius-button: 100px;
   --radius-poster: 16px;
-  --max-width: 1120px;
+  --max-width: 1200px;
   --transition: 0.3s ease;
 }
 
@@ -352,38 +352,50 @@ img {
   color: var(--text-secondary);
 }
 
-/* --- Hero Screenshot --- */
-.hero-right {
+/* --- Hero Devices --- */
+.hero-devices {
   position: relative;
   z-index: 1;
   flex: 1;
   min-width: 0;
-  max-width: 480px;
+  max-width: 560px;
+  aspect-ratio: 4 / 3;
 }
 
-.hero-screenshot-placeholder {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  padding: 80px 40px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-  color: var(--text-secondary);
-  transition: background var(--transition), border-color var(--transition);
-  aspect-ratio: 9 / 16;
-  max-height: 520px;
-  justify-content: center;
+.device-ipad {
+  position: relative;
+  width: 100%;
+  border-radius: 1.31% / 1.74%;
+  overflow: hidden;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
-.hero-screenshot-placeholder svg {
-  opacity: 0.3;
+.device-ipad img {
+  width: 100%;
+  height: auto;
+  display: block;
 }
 
-.hero-screenshot-placeholder p {
-  font-size: 15px;
+.device-iphone {
+  position: absolute;
+  bottom: -12%;
+  left: -8%;
+  width: 30%;
+  border-radius: 14.1% / 6.49%;
+  overflow: hidden;
+  box-shadow:
+    0 8px 40px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
 }
+
+.device-iphone img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
 
 /* --- Features --- */
 .features {
@@ -702,8 +714,8 @@ img {
     justify-content: center;
   }
 
-  .hero-right {
-    max-width: 320px;
+  .hero-devices {
+    max-width: 420px;
     width: 100%;
   }
 
@@ -750,14 +762,10 @@ img {
     width: 100%;
   }
 
-  .hero-right {
-    max-width: 260px;
+  .hero-devices {
+    max-width: 300px;
   }
 
-  .hero-screenshot-placeholder {
-    padding: 56px 24px;
-    border-radius: 20px;
-  }
 
   .footer-content {
     flex-direction: column;
