@@ -16,7 +16,7 @@ struct PlayerUpNextOverlayView: View {
                 panel(metrics: metrics)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
                     .padding(.horizontal, metrics.outerPadding)
-                    .padding(.top, max(geometry.safeAreaInsets.top + 16, 20))
+                    .padding(.top, max(geometry.safeAreaInsets.top + 56, 60))
                     .padding(.bottom, max(geometry.safeAreaInsets.bottom + 16, 20))
             }
         }
@@ -52,20 +52,11 @@ struct PlayerUpNextOverlayView: View {
 
     private func panel(metrics: UpNextLayoutMetrics) -> some View {
         VStack(alignment: .leading, spacing: metrics.sectionSpacing) {
-            HStack(alignment: .top, spacing: 16) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(eyebrowText)
-                        .font(.caption.weight(.semibold))
-                        .tracking(1.2)
-                        .foregroundStyle(Color.duskAccent)
-
-                    if let showTitle = presentation.episode.grandparentTitle {
-                        Text(showTitle)
-                            .font(.headline.weight(.semibold))
-                            .foregroundStyle(.white.opacity(0.9))
-                            .lineLimit(1)
-                    }
-                }
+            HStack(alignment: .center, spacing: 16) {
+                Text(eyebrowText)
+                    .font(.subheadline.weight(.semibold))
+                    .tracking(1.4)
+                    .foregroundStyle(Color.duskAccent)
 
                 Spacer(minLength: 0)
 
@@ -79,6 +70,7 @@ struct PlayerUpNextOverlayView: View {
                 .duskSuppressTVOSButtonChrome()
                 .duskTVOSFocusEffectShape(Circle())
             }
+            .padding(.bottom, -metrics.sectionSpacing / 2)
 
             if metrics.usesVerticalLayout {
                 VStack(alignment: .leading, spacing: metrics.sectionSpacing) {
@@ -174,18 +166,11 @@ struct PlayerUpNextOverlayView: View {
     }
 
     private func details(metrics: UpNextLayoutMetrics) -> some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text(primaryTitle)
+        VStack(alignment: .leading, spacing: 8) {
+            Text(presentation.episode.title)
                 .font(metrics.titleFont)
                 .foregroundStyle(.white)
                 .lineLimit(metrics.titleLineLimit)
-
-            if !presentation.shouldAutoplay {
-                Text(presentation.episode.title)
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.9))
-                    .lineLimit(2)
-            }
 
             if let metadata = metadataText {
                 Text(metadata)
@@ -197,11 +182,7 @@ struct PlayerUpNextOverlayView: View {
             if presentation.shouldAutoplay,
                let countdownLabel = presentation.secondsRemaining.map({ "Continues in \($0)s" }) {
                 countdownCard(label: countdownLabel, progress: presentation.autoplayProgress)
-            } else {
-                Text(manualPromptMessage)
-                    .font(.body)
-                    .foregroundStyle(.white.opacity(0.78))
-                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 8)
             }
 
             if let summary = presentation.episode.summary,
@@ -212,6 +193,7 @@ struct PlayerUpNextOverlayView: View {
                     .lineSpacing(4)
                     .lineLimit(metrics.summaryLineLimit)
                     .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 8)
             }
 
             if let errorMessage = presentation.errorMessage {
@@ -238,35 +220,13 @@ struct PlayerUpNextOverlayView: View {
     }
 
     private var eyebrowText: String {
-        presentation.autoplayBlockedByPassoutProtection ? "AUTOPLAY PAUSED" : "UP NEXT"
-    }
-
-    private var primaryTitle: String {
-        if presentation.shouldAutoplay {
-            return presentation.episode.title
+        if presentation.autoplayBlockedByPassoutProtection {
+            return "AUTOPLAY PAUSED"
         }
-
-        switch presentation.source {
-        case .playbackEnded:
-            return "Are You Still Watching?"
-        case .creditsSkipped:
-            return "Up Next"
+        if !presentation.shouldAutoplay, case .playbackEnded = presentation.source {
+            return "ARE YOU STILL WATCHING?"
         }
-    }
-
-    private var manualPromptMessage: String {
-        if presentation.autoplayBlockedByPassoutProtection,
-           let episodeLimit = presentation.passoutProtectionEpisodeLimit {
-            let episodeLabel = episodeLimit == 1 ? "episode" : "episodes"
-            return "Autoplay paused after \(episodeLimit) \(episodeLabel). Start the next episode when you're ready."
-        }
-
-        switch presentation.source {
-        case .playbackEnded:
-            return "Playback finished. Start the next episode when you're ready."
-        case .creditsSkipped:
-            return "Credits skipped. Start the next episode when you're ready."
-        }
+        return "UP NEXT"
     }
 
     private func countdownCard(label: String, progress: Double?) -> some View {
@@ -294,13 +254,6 @@ struct PlayerUpNextOverlayView: View {
             }
             .frame(height: 6)
         }
-        .padding(18)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.06), lineWidth: 1)
-        }
     }
 }
 
@@ -322,14 +275,20 @@ private struct UpNextLayoutMetrics {
 
     static func make(for geometry: GeometryProxy) -> Self {
         let size = geometry.size
-        let outerPadding: CGFloat = size.width < 500 ? 16 : 28
+        let isCompact = size.width < 500
+        let outerPadding: CGFloat = isCompact ? 16 : 48
         let safeHeight = size.height - geometry.safeAreaInsets.top - geometry.safeAreaInsets.bottom - 40
-        let panelWidth = min(size.width - outerPadding * 2, size.width < 500 ? 680 : 860)
-        let panelHeight = min(size.width < 500 ? 340 : 400, safeHeight)
-        let panelPadding: CGFloat = size.width < 500 ? 18 : 24
-        let contentSpacing: CGFloat = size.width < 500 ? 16 : 24
-        let sectionSpacing: CGFloat = size.width < 500 ? 16 : 20
-        let previewWidth = min(max(panelWidth * (size.width < 500 ? 0.3 : 0.28), 112), size.width < 500 ? 136 : 220)
+        let panelWidth = size.width - outerPadding * 2
+        let panelHeight = safeHeight
+        let panelPadding: CGFloat = isCompact ? 18 : 32
+        let contentSpacing: CGFloat = isCompact ? 16 : 32
+        let sectionSpacing: CGFloat = isCompact ? 16 : 24
+        let previewWidth: CGFloat
+        if isCompact {
+            previewWidth = min(max(panelWidth * 0.3, 112), 136)
+        } else {
+            previewWidth = min(max(panelWidth * 0.35, 220), 420)
+        }
         let previewHeight = previewWidth * 9.0 / 16.0
         let remainingWidth = panelWidth - (panelPadding * 2) - previewWidth - contentSpacing
         let usesVerticalLayout = remainingWidth < 210
@@ -344,11 +303,11 @@ private struct UpNextLayoutMetrics {
             previewWidth: previewWidth,
             previewHeight: previewHeight,
             usesVerticalLayout: usesVerticalLayout,
-            titleFont: size.width < 500 ? .title2.weight(.bold) : .largeTitle.weight(.bold),
-            titleLineLimit: size.width < 500 ? 2 : 3,
-            summaryLineLimit: size.width < 500 ? 3 : 4,
-            playButtonSize: size.width < 500 ? 54 : 64,
-            playIconSize: size.width < 500 ? 20 : 24
+            titleFont: isCompact ? .title2.weight(.bold) : .largeTitle.weight(.bold),
+            titleLineLimit: isCompact ? 2 : 3,
+            summaryLineLimit: isCompact ? 3 : 6,
+            playButtonSize: isCompact ? 54 : 72,
+            playIconSize: isCompact ? 20 : 28
         )
     }
 }
