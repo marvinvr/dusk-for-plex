@@ -151,11 +151,28 @@ extension PlayerViewModel {
             guard let self else { return }
             let duration = Self.autoSkipCountdownDuration
             let startedAt = Date()
+            var pausedAt: Date?
+            var accumulatedPausedTime: TimeInterval = 0
 
             while true {
                 if Task.isCancelled { return }
 
-                let elapsed = Date().timeIntervalSince(startedAt)
+                let now = Date()
+                if self.state == .paused {
+                    pausedAt = pausedAt ?? now
+                    do {
+                        try await Task.sleep(for: .milliseconds(50))
+                    } catch { return }
+                    continue
+                }
+
+                if let pausedAt {
+                    accumulatedPausedTime += now.timeIntervalSince(pausedAt)
+                }
+
+                pausedAt = nil
+
+                let elapsed = now.timeIntervalSince(startedAt) - accumulatedPausedTime
                 let progress = min(max(elapsed / duration, 0), 1)
                 self.autoSkipCountdownProgress = progress
 
