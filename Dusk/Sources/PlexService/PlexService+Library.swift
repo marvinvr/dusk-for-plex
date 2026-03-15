@@ -15,6 +15,16 @@ extension PlexService {
         )
     }
 
+    func getLibraryHubs(sectionId: String, count: Int = 12) async throws -> [PlexHub] {
+        try await fetchHubs(
+            path: "/hubs/sections/\(sectionId)",
+            queryItems: [
+                URLQueryItem(name: "count", value: String(count)),
+                URLQueryItem(name: "includeGuids", value: "1"),
+            ]
+        )
+    }
+
     func getSeasons(showKey: String) async throws -> [PlexSeason] {
         try await fetchMetadata(path: "/library/metadata/\(showKey)/children")
     }
@@ -82,10 +92,12 @@ extension PlexService {
             queryItems.append(URLQueryItem(name: "X-Plex-Container-Size", value: String(size)))
         }
 
-        return try await fetchMetadata(
+        let data = try await rawServerRequest(
             path: hubKey,
             queryItems: queryItems.isEmpty ? nil : queryItems
         )
+        let response = try decodeJSON(HubItemsResponse.self, from: data)
+        return (response.MediaContainer.Metadata ?? []) + (response.MediaContainer.Directory ?? [])
     }
 
     func search(query: String) async throws -> [PlexSearchResult] {

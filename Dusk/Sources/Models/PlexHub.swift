@@ -1,8 +1,8 @@
 import Foundation
 
 /// A "hub" on the Plex home screen (e.g. "Continue Watching", "Recently Added Movies").
-/// Returned from `GET /hubs` and `GET /hubs/search`.
-struct PlexHub: Codable, Sendable, Identifiable, Hashable {
+/// Returned from `GET /hubs`, `GET /hubs/sections/{sectionId}`, and `GET /hubs/search`.
+struct PlexHub: Decodable, Sendable, Identifiable, Hashable {
     var id: String { hubIdentifier ?? title }
 
     let key: String?
@@ -15,7 +15,8 @@ struct PlexHub: Codable, Sendable, Identifiable, Hashable {
 
     enum CodingKeys: String, CodingKey {
         case key, title, type, hubIdentifier, size, more
-        case items = "Metadata"
+        case metadata = "Metadata"
+        case directories = "Directory"
     }
 
     init(
@@ -43,7 +44,11 @@ struct PlexHub: Codable, Sendable, Identifiable, Hashable {
         type = try container.decodeIfPresent(String.self, forKey: .type)
         hubIdentifier = try container.decodeIfPresent(String.self, forKey: .hubIdentifier)
         size = try container.decodeIfPresent(Int.self, forKey: .size)
-        more = try container.decodeIfPresent(Bool.self, forKey: .more)
-        items = try container.decodeIfPresent([PlexItem].self, forKey: .items) ?? []
+        more = try container.decodeIfPresent(Bool.self, forKey: .more) ??
+            (try container.decodeIfPresent(Int.self, forKey: .more).map { $0 != 0 })
+
+        let metadataItems = try container.decodeIfPresent([PlexItem].self, forKey: .metadata) ?? []
+        let directoryItems = try container.decodeIfPresent([PlexItem].self, forKey: .directories) ?? []
+        items = metadataItems + directoryItems
     }
 }

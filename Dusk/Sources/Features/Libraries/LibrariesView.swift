@@ -25,7 +25,11 @@ struct LibrariesView: View {
         } else if let error = viewModel.error, viewModel.libraries.isEmpty {
             errorView(message: error)
         } else if libraries.count == 1, let library = libraries.first {
-            LibraryItemsView(library: library, plexService: plexService)
+            LibraryRecommendationsView(
+                library: library,
+                plexService: plexService,
+                navigationTitle: libraryType.tabTitle
+            )
         } else if libraries.isEmpty {
             emptyView
         } else {
@@ -53,11 +57,23 @@ struct LibrariesView: View {
         .duskNavigationBarTitleDisplayModeLarge()
     }
 
+    private var emptyView: some View {
+        ZStack {
+            Color.duskBackground.ignoresSafeArea()
+            FeatureEmptyStateView(
+                systemImage: libraryType.systemImage,
+                title: "No \(libraryType.tabTitle) libraries found"
+            )
+        }
+        .duskNavigationTitle(libraryType.tabTitle)
+        .duskNavigationBarTitleDisplayModeLarge()
+    }
+
     private func libraryList(_ libraries: [PlexLibrary]) -> some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 12) {
                 ForEach(libraries) { library in
-                    NavigationLink(value: AppNavigationRoute.library(library)) {
+                    NavigationLink(value: AppNavigationRoute.libraryRecommendations(library)) {
                         LibraryRowContent(library: library, vm: viewModel)
                     }
                     .duskSuppressTVOSButtonChrome()
@@ -72,18 +88,6 @@ struct LibrariesView: View {
         .duskNavigationTitle(libraryType.tabTitle)
         .duskNavigationBarTitleDisplayModeLarge()
     }
-
-    private var emptyView: some View {
-        ZStack {
-            Color.duskBackground.ignoresSafeArea()
-            FeatureEmptyStateView(
-                systemImage: libraryType.systemImage,
-                title: "No \(libraryType.tabTitle) libraries found"
-            )
-        }
-        .duskNavigationTitle(libraryType.tabTitle)
-        .duskNavigationBarTitleDisplayModeLarge()
-    }
 }
 
 private struct LibraryRowContent: View {
@@ -92,7 +96,6 @@ private struct LibraryRowContent: View {
 
     var body: some View {
         HStack(spacing: 16) {
-            // Library art thumbnail
             ZStack {
                 if let url = vm.artURL(for: library, width: 64, height: 64) {
                     AsyncImage(url: url) { phase in

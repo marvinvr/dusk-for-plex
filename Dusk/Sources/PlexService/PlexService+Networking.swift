@@ -184,3 +184,15 @@ struct HubResponse: Decodable {
         let Hub: [PlexHub]?
     }
 }
+
+struct HubItemsResponse: Decodable {
+    let MediaContainer: Container
+
+    struct Container: Decodable {
+        let size: Int?
+        let totalSize: Int?
+        let offset: Int?
+        let Metadata: [PlexItem]?
+        let Directory: [PlexItem]?
+    }
+}
